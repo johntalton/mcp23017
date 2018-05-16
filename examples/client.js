@@ -17,24 +17,29 @@ class Device {
       .then(mcp => {
         console.log('Microchip MCP27x17 up.');
         config.client = mcp;
+        return mcp.profile().then(console.log);
       });
   }
 }
 
+const fs = require('fs');
 class Config {
-  static defaults() {
-    return Promise.resolve({
-      mqtt: { },
-      devices: [
-        {
-          nane: "extention",
-          bus: { driver: "i2c-bus", id: [ 42, 0x20 ] }
-        }
-      ]
-    });
+  static config(path) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(path, { encoding: 'utf-8', flag: 'r' }, (err, data) => {
+        if(err) { reject(err); return; }
+        resolve(data);
+      });
+    })
+    .then(JSON.parse)
+    .then(Config.normalize);
+  }
+
+  static normalize(json) {
+    // console.log('normalizing', json);
+    return json;
   }
 }
-
 
 function setupDevices(config) {
   return config.devices.map(device => Device.setupWithRetry(device));
@@ -44,7 +49,7 @@ function setupStore(config) {
   return Promise.resolve();
 }
 
-Config.defaults().then(config => {
+Config.config('client.json').then(config => {
   return Promise.all([
     setupDevices(config),
     setupStore(config)

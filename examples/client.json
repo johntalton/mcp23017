@@ -1,0 +1,21 @@
+{
+  "mqtt": { },
+  "devices": [
+    {
+      "name": "extention",
+      "bus": { "driver": "i2c-bus", "id": [ 1, 32 ] },
+      "active": true,
+
+      "profile": {
+        "defaultBank": 0,
+        "hardwareAddress": true,
+        "slew": true,
+
+        "interrupt": {
+          "mirror": false,
+          "mode": "open-drain"
+        }
+      }
+    }
+  ]
+}
