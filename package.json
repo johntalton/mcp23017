@@ -1,0 +1,18 @@
+{
+  "name": "mcp23017",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/mcp23.js",
+  "scripts": {
+    "lint": "./node_modules/.bin/eslint ."
+  },
+  "author": "johntalton@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "rasbus": "file:../rasbus"
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-config-google": "^0.9.1"
+  }
+}
