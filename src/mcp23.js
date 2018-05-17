@@ -1,4 +1,6 @@
 
+const { BusUtil, BitUtil } = require('and-other-delights');
+
 const BASE_10 = 10;
 
 const HIGH = 1;
@@ -8,8 +10,8 @@ const LOW = 0;
 
 
 
-const BANK0 = 0;
-const BANK1 = 1;
+const BANK0 = 0; // interlaces ABABAB
+const BANK1 = 1; // block AAAA | BBBB
 
 const REGISTERS = [{
   // bank 0 layout
@@ -49,19 +51,27 @@ const REGISTERS = [{
   GPIOA: 0x09,
   OLATA: 0x0A,
 
-  IODIRA: 0x10,
-  IPOLA: 0x11,
-  GPINTENA: 0x12,
-  DEFVALA: 0x13,
-  INTCONA: 0x14,
+  IODIRB: 0x10,
+  IPOLB: 0x11,
+  GPINTENB: 0x12,
+  DEFVALB: 0x13,
+  INTCONB: 0x14,
   IOCON_ALT: 0x15,
-  GPPUA: 0x16,
-  INTFA: 0x17,
-  INTCAPA: 0x18,
-  GPIOA: 0x19,
-  OLATA: 0x1A
+  GPPUB: 0x16,
+  INTFB: 0x17,
+  INTCAPB: 0x18,
+  GPIOB: 0x19,
+  OLATB: 0x1A
 }];
 
+
+// only read non-data bytes (aka, do not cause interupt reset)
+// note, we also exclude OLAT // todo include OLAT
+const PIN_STATE_SIZE = 8;
+const PIN_STATE_BLOCKS = [
+  [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE]], // bank 0 layout (interlaced)
+  [[0x00, PIN_STATE_SIZE], [0x10, PIN_STATE_SIZE]] // bank 1 layout (split)
+];
 
 
 /**
@@ -73,14 +83,14 @@ class Gpio {
     this.controller = controller;
   }
 
-  get direction() { return Common.direction(this.controller, this.pin); }
-  set direction(direction) {}
+  direction() { return Common.direction(this.controller, this.pin); }
+  setDirection(direction) {}
 
-  get edge() {}
-  set edge(edge) {}
+  edge() {}
+  setEdge(edge) {}
 
-  get activeLow() {}
-  set activeLow(activeLow) {}
+  activeLow() {}
+  setActiveLow(activeLow) {}
 
   read() { return Common.read(this.controller, this.pin); }
   write(value) { return Common.write(this.controller, this.pin, value); }
@@ -126,6 +136,13 @@ class Transaction {
 
 }
 
+const DEFAULT_PIN_MAP = {
+  0: { port: 'A', pin: 0 },
+  7: { port: 'A', pin: 7 },
+  8: { port: 'B', pin: 0 },
+ 16: { port: 'B', pin: 7 }
+};
+
 /**
  *
  **/
@@ -135,77 +152,158 @@ class Mcp23 {
   }
 
   constructor(bus, options) {
-    this.bus = bus;
-    this.bank = 0;
+    this._bus = bus;
+    this._bank = 0;
+    this._pinmap = DEFAULT_PIN_MAP;
   }
+
+  get bank() { return this._bank; }
+  set bank(b) { this._bank = b; }
 
   close() {}
 
-  setProfile(profile) { return Common.setProfile(profile); }
-  profile() { return Common.profile(this.bus, this.bank); }
+  sniffBank() { return Common.sniffBank(this._bus); }
 
-  processInterrupt(bankName) {}
+  setProfile(profile) {
+    return Common.setProfile(this._bus, this._bank, profile)
+      .then(newbank => this._bank = newbank); // cache new bankX
+  }
 
-  getGpio(gpio, options) {
-    const [bank, pin] = Util.parseGpio(gpio);
+  profile() { return Common.profile(this._bus, this.bank); }
+
+  state() { return Common.state(this._bus, this.bank); }
+
+  interruptPortA() {}
+  interruptPortB() {}
+
+  getGpio(gpio, opts) {
+    const options = Util.gpioOptions(opts);
+    return Common.exportGpio(gpio, options);
     return Promise.resolve(new Gpio(bank, pin, options))
   }
 
   getPort(port) { return Promise.reject(); }
 }
 
-class BitUtil {
-  /**
-   *  packbits([2, [3, 2]], onoff, quad)
-   **/
-  static packbits(packmap, ...params) {
-    return BitUtil._normalPackmap(packmap)
-      .reduce((accum, [position, length], idx) => {
-        const mask = Math.pow(2, length) - 1;
-        const value = params[idx] & mask;
-        const shift = position + 1 - length;
-        return accum | (value << shift);
-      }, 0);
-  }
-
-  /**
-   *  const [onoff, quad] = unpackbits([2, [3, 2]])
-   **/
-  static unpackbits(packmap, bits) {
-    return BitUtil._normalizePackmap(packmap)
-      .map(([position, length]) => {
-        return BitUtil._readBits(bits, position. length);
-      });
-  }
-
-  // position if from left->right with zero index
-  static _readBits(bits, position, length) {
-    const shift = position - length + 1;
-    const mask = Math.pow(2, length) - 1;
-    return (bits >> shift) & mask;
-  }
-
-  static _normalizePackmap(packmap) {
-    return packmap.map(item => {
-      if(Array.isArray(item)) {
-        if(item.length !== 2) { console.log('sloppy packmap fomrat', item); return [item[0], 1]; }
-        return item;
-      }
-      return [item, 1];
-    });
-  }
-}
 
 /**
  *
  **/
 class Common {
-  static sniffBank() {}
+  static sniffBank(bus) {
+    function lowZero(iocon) { return (iocon & 0x01) === 0; }
+    function bankFrom(iocon) { return iocon >> 7 & 1; }
+    function maybe(iocon, ioconAlt, bank) {
+      //console.log('maybe', iocon, ioconAlt, bank);
+      if(iocon === undefined) { return false; }
+      if(ioconAlt === undefined) { return false; }
+      if(!lowZero(iocon)) { return false; }
+      if(!lowZero(ioconAlt)) { return false; }
+      if(iocon !== ioconAlt) { return false; }
+      return bankFrom(iocon) === bank;
+    }
+    function guess(zero, one) {
+      if(zero && one) { return undefined; } // todo should be guess bank0
+      if(zero && !one) { return BANK0; }
+      if(!zero && one) { return BANK1; }
+      return undefined;
+    }
+
+    return Promise.all([
+      bus.read(REGISTERS[BANK0].IOCON).catch(e => undefined),
+      bus.read(REGISTERS[BANK0].IOCON_ALT).catch(e => undefined),
+      bus.read(REGISTERS[BANK1].IOCON).catch(e => undefined),
+      bus.read(REGISTERS[BANK1].IOCON_ALT).catch(e => undefined)
+    ])
+      .then(results => results.map(r => Buffer.isBuffer(r) ? r.readUInt8(0) : r))
+      .then(([b0, b0a, b1, b1a]) => {
+        // if actaull bank0: iocon iocona gpiniteB olatB
+        // if actaull bank1: olatA undef iocon iocona
+        if(b1 === undefined) {
+          console.log(' --- expected --- b1 undef (invalid register), bank0 maybe');
+        }
+
+        if(b0 === undefined) { console.log('likely error b0');}
+        if(b1 === undefined) { console.log('likely error b1'); }
+        if(b1a === undefined) { console.log('likely error b1a'); }
+
+        const z = maybe(b0, b0a, BANK0);
+        const o = maybe(b1, b1a, BANK1);
+        const g = guess(z, o);
+        return {
+          zero: z,
+          one: o,
+          guess: g
+        };
+      })
+      .catch(e => {
+        console.log('error sniffing', e);
+        return { zero: false, one: false, guess: BANK0 };
+      });
+  }
 
   static profile(bus, bank) {
-    return bus.read(REGISTERS[bank].IOCON).then(Converter.fromIocon);
+    return bus.read(REGISTERS[bank].IOCON)
+      .then(buf => buf.readUInt8(0))
+      .then(Converter.fromIocon);
   }
-  static setProfile(profile) {}
+
+  static setProfile(bus, bank, profile) {
+    const pb = (profile.bank !== undefined && profile.bank !== false) ? profile.bank : bank;
+    const iocon = Converter.toIocon(profile, pb);
+    console.log('setProfile', iocon.toString(2));
+    return bus.write(REGISTERS[bank].IOCON, iocon)
+      .then(() => pb);
+  }
+
+  static state(bus, bank) {
+    // return the split read buffer to its memmapped
+    // offset/size, such that we can use the same
+    // register addresses to access each buffer
+    function fixUp(buf) {
+      if(bank === BANK0) { return Buffer.from(buf); }
+      return Buffer.concat([
+        buf.slice(0, 0 + PIN_STATE_SIZE),
+        Buffer.from(new Array(8)), // +3 to get to 11 and skip +5 to next block
+        buf.slice(8, 8 + PIN_STATE_SIZE)
+      ]);
+    }
+
+    return BusUtil.readblock(bus, PIN_STATE_BLOCKS[bank])
+      .then(fixUp)
+      .then(buf => {
+        console.log('reading state for bankk', bank, buf);
+        const iocon = buf.readUInt8(REGISTERS[bank].IOCON)
+        const ioconAlt = buf.readUInt8(REGISTERS[bank].IOCON_ALT)
+        if(iocon !== ioconAlt) { throw Error('iocon missmatch: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+
+        const a = Converter.fromPortState({
+          iodir: buf.readUInt8(REGISTERS[bank].IODIRA),
+          iopol: buf.readUInt8(REGISTERS[bank].IPOLA),
+          gpinten: buf.readUInt8(REGISTERS[bank].GPINTENA),
+          defval: buf.readUInt8(REGISTERS[bank].DEFVALA),
+          intcon: buf.readUInt8(REGISTERS[bank].INTCONA),
+          gppu: buf.readUInt8(REGISTERS[bank].GPPUA),
+          intf: buf.readUInt8(REGISTERS[bank].INTFA)
+        });
+
+        const b = Converter.fromPortState({
+          iodir: buf.readUInt8(REGISTERS[bank].IODIRB),
+          iopol: buf.readUInt8(REGISTERS[bank].IPOLB),
+          gpinten: buf.readUInt8(REGISTERS[bank].GPINTENB),
+          defval: buf.readUInt8(REGISTERS[bank].DEFVALB),
+          intcon: buf.readUInt8(REGISTERS[bank].INTCONB),
+          gppu: buf.readUInt8(REGISTERS[bank].GPPUB),
+          intf: buf.readUInt8(REGISTERS[bank].INTFB)
+        });
+
+        return {
+          profile: Converter.fromIocon(iocon),
+          a: a,
+          b: b
+        };
+      })
+  }
 
   static readInterrupts() { } // return [pin, value]
 
@@ -217,8 +315,8 @@ class Common {
   static wrtiePortLatch(controller, port, value) {}
 }
 
-
-const IOCON_PACKMAP = [0, 1, 2, 3, 4, 5, 6, 7];
+const PORT_PACKMAP = BinUtil.TRUE_8_BITMAP;
+const IOCON_PACKMAP = BinUtil.TRUE_8_BITMAP;
 const MIR_EN = 1;
 const SEQ_EN = 0;
 const SLEW_EN = 0;
@@ -237,14 +335,39 @@ const POL_HIGH = 1;
  *
  **/
 class Converter {
-  static toIocon(obj) {
-    const b = obj.bank;
-    const m = obj.interrupt.mirror ? MIR_EN : MIR_DEN;
-    const s = obj.sequential ? SEQ_EN : SEQ_DEN;
-    const d = obj.slew ? SLEW_EN : SLEW_DEN;
-    const h = obj.hardwareAddress ? HWA_EN : HWA_DEN;
-    const o = object.openDrain ? ODR_OPENDRAIN : ODR_ACTIVEDRIVER;
-    const i = object.activeLow ? POL_LOW : POL_HIGH;
+  static fromPortState(state) {
+    // there are 8 pins in a port // todo global for pinsPerPort: 8
+    const pins = [0, 1, 2, 3, 4, 5, 6, 7]; // todo range(pinsPerPort)
+    const directions = BitUtil.unpackbits(PORT_PACKMAP, state.iodir);
+    const polarities = BitUtil.unpackbits(PORT_PACKMAP, state.iopol);
+    const intEnableds = BitUtil.unpackbits(PORT_PACKMAP, state.gpinten);
+    const defaultValues = BitUtil.unpackbits(PORT_PACKMAP, state.defval);
+    const intControls = BitUtil.unpackbits(PORT_PACKMAP, state.intcon);
+    const pullUps = BitUtil.unpackbits(PORT_PACKMAP, state.gppu);
+    const intFlags = BitUtil.unpackbits(PORT_PACKMAP, state.intf);
+
+    return pins.map(pin => ({
+      pin: pin,
+      direction: directions[pin],
+      polarity: polarities[pin],
+      interruptEnabled: intEnableds[pin],
+      defaultValue: defaultValues[pin],
+      interruptControl: intControls[pin],
+      pullup: pullUps[pin],
+      interruptFlag: intFlags[pin]
+    }));
+  }
+
+  static toIocon(profile, bank) {
+    const b = bank;
+    const m = profile.interrupt.mirror ? MIR_EN : MIR_DEN;
+    const s = profile.sequential ? SEQ_EN : SEQ_DEN;
+    const d = profile.slew ? SLEW_EN : SLEW_DEN;
+    const h = profile.hardwareAddress ? HWA_EN : HWA_DEN;
+    const o = profile.interrupt.openDrain ? ODR_OPENDRAIN : ODR_ACTIVEDRIVER;
+    const i = profile.interrupt.activeLow ? POL_LOW : POL_HIGH;
+
+    // console.log('toIocon', b, m, s, d, h, o, i, 0, obj);
 
     return BitUtil.packbits(IOCON_PACKMAP, b, m, s, d, h, o, i, 0);
   }
@@ -262,6 +385,8 @@ class Converter {
 
     // sanity check, according to doc, always zero
     if(u !== 0) { throw Error('iocon unpack error / zero bit'); }
+
+    // console.log('fromIocon', iocon.toString(2), b, m, s, d, h, o, i);
 
     return {
       bank: bank,
@@ -311,5 +436,7 @@ class Util {
   }
 }
 
+Mcp23.BANK0 = BANK0;
+Mcp23.BANK1 = BANK1;
 
-module.exports = { Mcp23 };
+module.exports = { Mcp23, BANK0, BANK1 };
