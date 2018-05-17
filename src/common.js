@@ -1,0 +1,209 @@
+
+const { BusUtil, BitUtil } = require('and-other-delights');
+
+const { Converter } = require('./converter.js');
+
+const BASE_10 = 10;
+
+const HIGH = 1;
+const LOW = 0;
+
+const REGISTERS = [{
+  // bank 0 layout
+  IODIRA: 0x00,
+  IODIRB: 0x01,
+  IPOLA: 0x02,
+  IPOLB: 0x03,
+  GPINTENA: 0x04,
+  GPINTENB: 0x05,
+  DEFVALA: 0x06,
+  DEFVALB: 0x07,
+  INTCONA: 0x08,
+  INTCONB: 0x09,
+  IOCON: 0x0A,
+  IOCON_ALT: 0x0B,
+  GPPUA: 0x0C,
+  GPPUB: 0x0D,
+  INTFA: 0x0E,
+  INTFB: 0x0F,
+  INTCAPA: 0x10,
+  INTCAPB: 0x11,
+  GPIOA: 0x12,
+  GPIOB: 0x13,
+  OLATA: 0x14,
+  OLATB: 0x15
+},
+{ // bank 1 layout
+  IODIRA: 0x00,
+  IPOLA: 0x01,
+  GPINTENA: 0x02,
+  DEFVALA: 0x03,
+  INTCONA: 0x04,
+  IOCON: 0x05,
+  GPPUA: 0x06,
+  INTFA: 0x07,
+  INTCAPA: 0x08,
+  GPIOA: 0x09,
+  OLATA: 0x0A,
+
+  IODIRB: 0x10,
+  IPOLB: 0x11,
+  GPINTENB: 0x12,
+  DEFVALB: 0x13,
+  INTCONB: 0x14,
+  IOCON_ALT: 0x15,
+  GPPUB: 0x16,
+  INTFB: 0x17,
+  INTCAPB: 0x18,
+  GPIOB: 0x19,
+  OLATB: 0x1A
+}];
+
+
+// only read non-data bytes (aka, do not cause interupt reset)
+// note, we also exclude OLAT // todo include OLAT
+const PIN_STATE_SIZE = 8;
+const PIN_STATE_BLOCKS = [
+  [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE]], // bank 0 layout (interlaced)
+  [[0x00, PIN_STATE_SIZE], [0x10, PIN_STATE_SIZE]] // bank 1 layout (split)
+];
+
+/**
+ *
+ **/
+class Common {
+  static sniffBank(bus) {
+    function lowZero(iocon) { return (iocon & 0x01) === 0; }
+    function bankFrom(iocon) { return iocon >> 7 & 1; }
+    function maybe(iocon, ioconAlt, bank) {
+      //console.log('maybe', iocon, ioconAlt, bank);
+      if(iocon === undefined) { return false; }
+      if(ioconAlt === undefined) { return false; }
+      if(!lowZero(iocon)) { return false; }
+      if(!lowZero(ioconAlt)) { return false; }
+      if(iocon !== ioconAlt) { return false; }
+      return bankFrom(iocon) === bank;
+    }
+    function guess(zero, one) {
+      if(zero && one) { return undefined; } // todo should be guess bank0
+      if(zero && !one) { return Common.BANK0; }
+      if(!zero && one) { return Common.BANK1; }
+      return undefined;
+    }
+
+    return Promise.all([
+      bus.read(REGISTERS[Common.BANK0].IOCON).catch(e => undefined),
+      bus.read(REGISTERS[Common.BANK0].IOCON_ALT).catch(e => undefined),
+      bus.read(REGISTERS[Common.BANK1].IOCON).catch(e => undefined),
+      bus.read(REGISTERS[Common.BANK1].IOCON_ALT).catch(e => undefined)
+    ])
+      .then(results => results.map(r => Buffer.isBuffer(r) ? r.readUInt8(0) : r))
+      .then(([b0, b0a, b1, b1a]) => {
+        // if actaull bank0: iocon iocona gpiniteB olatB
+        // if actaull bank1: olatA undef iocon iocona
+        if(b1 === undefined) {
+          console.log(' --- expected --- b1 undef (invalid register), bank0 maybe');
+        }
+
+        if(b0 === undefined) { console.log('likely error b0');}
+        if(b1 === undefined) { console.log('likely error b1'); }
+        if(b1a === undefined) { console.log('likely error b1a'); }
+
+        const z = maybe(b0, b0a, Common.BANK0);
+        const o = maybe(b1, b1a, Common.BANK1);
+        const g = guess(z, o);
+        return {
+          zero: z,
+          one: o,
+          guess: g
+        };
+      })
+      .catch(e => {
+        console.log('error sniffing', e);
+        return { zero: false, one: false, guess: Common.BANK0 };
+      });
+  }
+
+  static profile(bus, bank) {
+    return bus.read(REGISTERS[bank].IOCON)
+      .then(buf => buf.readUInt8(0))
+      .then(Converter.fromIocon);
+  }
+
+  static setProfile(bus, bank, profile) {
+    const pb = (profile.bank !== undefined && profile.bank !== false) ? profile.bank : bank;
+    const iocon = Converter.toIocon(profile, pb);
+    console.log('setProfile', iocon.toString(2));
+    console.log(' --------------------');
+    if(bank === Common.BANK0 && profile.sequential) { console.log(' Sequential addressing / interlaced')}
+    if(bank === Common.BANK0 && !profile.sequential) { console.log(' Byte Mode (Wobble AB)'); }
+    if(bank === Common.BANK1 && profile.sequential) { console.log(' Sequential addressing / block'); }
+    if(bank === Common.BANK1 && !profile.sequential) { console.log(' Byte Mode'); }
+    console.log(' --------------------');
+    return bus.write(REGISTERS[bank].IOCON, iocon)
+      .then(() => pb);
+  }
+
+  static state(bus, bank) {
+    // return the split read buffer to its memmapped
+    // offset/size, such that we can use the same
+    // register addresses to access each buffer
+    function fixUp(buf) {
+      if(bank === Common.BANK0) { return Buffer.from(buf); }
+      return Buffer.concat([
+        buf.slice(0, 0 + PIN_STATE_SIZE),
+        Buffer.from(new Array(8)), // +3 to get to 11 and skip +5 to next block
+        buf.slice(8, 8 + PIN_STATE_SIZE)
+      ]);
+    }
+
+    return BusUtil.readblock(bus, PIN_STATE_BLOCKS[bank])
+      .then(fixUp)
+      .then(buf => {
+        console.log('reading state for bank', bank, buf);
+        const iocon = buf.readUInt8(REGISTERS[bank].IOCON)
+        const ioconAlt = buf.readUInt8(REGISTERS[bank].IOCON_ALT)
+        if(iocon !== ioconAlt) { throw Error('iocon missmatch: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+
+        const a = Converter.fromPortState({
+          iodir: buf.readUInt8(REGISTERS[bank].IODIRA),
+          iopol: buf.readUInt8(REGISTERS[bank].IPOLA),
+          gpinten: buf.readUInt8(REGISTERS[bank].GPINTENA),
+          defval: buf.readUInt8(REGISTERS[bank].DEFVALA),
+          intcon: buf.readUInt8(REGISTERS[bank].INTCONA),
+          gppu: buf.readUInt8(REGISTERS[bank].GPPUA),
+          intf: buf.readUInt8(REGISTERS[bank].INTFA)
+        });
+
+        const b = Converter.fromPortState({
+          iodir: buf.readUInt8(REGISTERS[bank].IODIRB),
+          iopol: buf.readUInt8(REGISTERS[bank].IPOLB),
+          gpinten: buf.readUInt8(REGISTERS[bank].GPINTENB),
+          defval: buf.readUInt8(REGISTERS[bank].DEFVALB),
+          intcon: buf.readUInt8(REGISTERS[bank].INTCONB),
+          gppu: buf.readUInt8(REGISTERS[bank].GPPUB),
+          intf: buf.readUInt8(REGISTERS[bank].INTFB)
+        });
+
+        return {
+          profile: Converter.fromIocon(iocon),
+          a: a,
+          b: b
+        };
+      })
+  }
+
+  static readInterrupts() { } // return [pin, value]
+
+  static read(controller, pin) {}
+  static write(controller, pin, value) {}
+
+  static readPort(controller, port) {}
+  static writePort(controller, port, value) {}
+  static wrtiePortLatch(controller, port, value) {}
+}
+
+Common.BANK0 = Converter.BANK0;
+Common.BANK1 = Converter.BANK1;
+
+module.exports = { Common };

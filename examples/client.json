@@ -3,7 +3,7 @@
   "devices": [
     {
       "name": "mcp23-extention",
-      "bus": { "driver": "i2c-bus", "id": [ 1, 32 ] },
+      "bus": { "driver": "i2c-bus", "id": [ 42, 32 ] },
       "active": true,
 
       "sniffBank": true,
@@ -13,7 +13,7 @@
       "profile": {
         "mutable": false,
 
-        "_bank": 1,
+        "bank": 1,
         "sequential": true,
         "hardwareAddress": false,
         "slew": true,

@@ -1,7 +1,53 @@
 
+// 1st party imports
 const rasbus = require('rasbus');
 
+// local imports
 const { Mcp23 } = require('../');
+
+class Util {
+  static logProfile(profile) {
+    console.log('#');
+    console.log('# Operational Mode ', Util.operationalMode(profile));
+    console.log('#  Slew', profile.slew, ' hwAddr', profile.hardwareAddress);
+    console.log('#  Interrupt', profile.interrupt.mirror ? '' : '', Util.interruptMode(profile.interrupt));
+    console.log('#');
+  }
+
+  static operationalMode(profile) {
+    if(profile.bank === Mcp23.BANK0 && profile.sequential) { return 'Sequential addressing / interlaced (default)'; }
+    if(profile.bank === Mcp23.BANK0 && !profile.sequential) { return 'Byte Mode / wobble AB'; }
+    if(profile.bank === Mcp23.BANK1 && profile.sequential) { return 'Sequential addressing / block'; }
+    if(profile.bank === Mcp23.BANK1 && !profile.sequential) { return 'Byte Mode'; }
+    throw Error('unknown mode');
+  }
+
+  static interruptMode(interrupt) {
+    if(interrupt.openDrain) { return 'open-drain'; }
+    if(!interrupt.activeLow) { return 'active-high'; }
+    return 'active-low (default)';
+  }
+
+  static logState(state) {
+    console.log('#');
+    Util.logProfile(state.profile);
+    console.log('# Port A');
+    state.a.forEach(Util.logGpio);
+    console.log('# Port B');
+    state.b.forEach(Util.logGpio);
+    console.log('#');
+  }
+
+  static logGpio(gpio) {
+    console.log('#  Pin', gpio.pin);
+    console.log('#   Direction', gpio.direction);
+    console.log('#   Polarity', gpio.polarity);
+    console.log('#   Interrupt', gpio.interruptEnabled);
+    console.log('#   default Value', gpio.defaultValue);
+    console.log('#   Pull-Up', gpio.pullup);
+    console.log('#   interruptFlag', gpio.interruptFlag);
+  }
+}
 
 class Device {
   static setupWithRetry(config) {
@@ -16,21 +62,19 @@ class Device {
   }
 
   static _setup(config) {
-    return  rasbus.byname(config.bus.driver).init(...config.bus.id)
+    return rasbus.byname(config.bus.driver).init(...config.bus.id)
       .then(bus => Mcp23.from(bus));
   }
 
   static _configure(config) {
     return config.client.sniffBank()
       .then(({ one, zero, guess }) => {
-        if(one && zero) { console.log('ambigious sniff'); return; }
-        if(!one && !zero) {
-          console.log('sniff found no bank, is this even a mcp23');
-          throw Error('unknown bank after sniff');
-        }
+        if(one && zero) { console.log('# ambigious sniff'); }
+        if(!one && !zero) { console.log('# sniff found no bank, is this even a mcp23'); }
+        if(!one && zero) { console.log('# sniffed Zero'); }
+        if(one && !zero) { console.log('# sniffed One'); }
 
-        if(!one && zero) { console.log('sniffed Zero'); return Mcp23.BANK0; }
-        if(one && !zero) { console.log('sniffed One'); return Mcp23.BANK1; }
+        return guess;
       })
       .then(sniffedBank => {
         if(sniffedBank === undefined) { console.log('no sniff update'); return; }
@@ -69,12 +113,19 @@ class Device {
           }
         }
       })
-      .then(() => config.client.profile()).then(profile => console.log('echo profile before set', profile))
+      .then(() => config.client.profile()).then(profile => {
+        console.log('profile after sniff');
+        Util.logProfile(profile);
+      })
+
       .then(() => config.client.setProfile(config.profile))
-      .then(() => config.client.profile()).then(profile => console.log('echo profile after set', profile))
-      .then(() => config.client.state()).then(console.log)
-      //.then(() => mcp.sniffBank()).then(console.log)
-      ;
+      .then(() => config.client.profile()).then(profile => {
+        console.log('profile after set (validate...)')
+        Util.logProfile(profile);
+        // Todo return validation result
+      })
+
+      .then(() => config.client.state()).then(Util.logState);
   }
 }
 
@@ -110,12 +161,19 @@ class Config {
     const name = device.name !== undefined ? device.name : idx.toString(10);
     const active = device.active !== undefined ? device.active : true;
 
-    const sniffBank = device.sniffBank !== undefined ? 
+    const sniffBank = device.sniffBank !== undefined ? device.sniffBank : true;
+    const setPoS = device.setProfileOnStart !== undefined ? device.setProfileOnStart : true;
+    const validPoS = device.validateProfileOnStart !== undefined ? device.validateProfileOnStart : true;
 
     return {
       name: name,
       active: active,
       bus: { ...device.bus },
+
+      sniffBank: sniffBank,
+      setProfileOnStart: setPoS,
+      validateProfileOnStart: validPoS,
+
       profile: Config.normalizeProfile(device.profile)
     };
   }
@@ -171,7 +229,6 @@ function setupStore(config) {
 }
 
 Config.config('client.json').then(config => {
-   console.log('config', config.devices[0]);
   return Promise.all([
     setupDevices(config),
     setupStore(config)
