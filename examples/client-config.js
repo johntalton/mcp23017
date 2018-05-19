@@ -49,9 +49,13 @@ class Config {
       setProfileOnStart: setPoS,
       validateProfileOnStart: validPoS,
 
-      profile: Config.normalizeProfile(device.profile)
+      profile: Config.normalizeProfile(device.profile),
+
+      names: Config.normalizeNames(device.names)
     };
   }
+
+  static normalizeNames(names) { return names; } // todo
 
   static normalizeProfile(profile) {
     const mutable = profile.mutable !== undefined ? profile.mutable : true;

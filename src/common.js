@@ -151,7 +151,7 @@ class Common {
       .then(() => pb);
   }
 
-  static state(bus, bank, sequential) {
+  static state(bus, bank, sequential, namemap) {
     // return the split read buffer to its memmapped
     // offset/size, such that we can use the same
     // register addresses to access each buffer
@@ -203,7 +203,6 @@ class Common {
           console.log('read profiles bank is not the bank used to read!');
         }
 
-
         const a = Converter.fromPortState({
           iodir: buf.readUInt8(REGISTERS[bank].IODIRA),
           iopol: buf.readUInt8(REGISTERS[bank].IPOLA),
@@ -213,7 +212,7 @@ class Common {
           gppu: buf.readUInt8(REGISTERS[bank].GPPUA),
           intf: buf.readUInt8(REGISTERS[bank].INTFA),
           olat: buf.readUInt8(REGISTERS[bank].OLATA)
-        });
+        }, namemap.portA);
 
         const b = Converter.fromPortState({
           iodir: buf.readUInt8(REGISTERS[bank].IODIRB),
@@ -224,12 +223,11 @@ class Common {
           gppu: buf.readUInt8(REGISTERS[bank].GPPUB),
           intf: buf.readUInt8(REGISTERS[bank].INTFB),
           olat: buf.readUInt8(REGISTERS[bank].OLATB)
-        });
+        }, namemap.portB);
 
         return {
           profile: profile,
-          a: a,
-          b: b
+          gpios: a.concat(b)
         };
       })
   }

@@ -73,7 +73,7 @@ const OLAT_LOGIC_LOW = LOW;
  *
  **/
 class Converter {
-  static fromPortState(state) {
+  static fromPortState(state, portNameMap) {
     // console.log('from port state', state);
     const directions = BitUtil.unpackbits(PORT_PACKMAP, state.iodir);
     const polarities = BitUtil.unpackbits(PORT_PACKMAP, state.iopol);
@@ -90,6 +90,7 @@ class Converter {
     // todo global for pinsPerPort: 8, and the use ragne(8) here
     const pins = [0, 1, 2, 3, 4, 5, 6, 7];
     return pins.map(pin => {
+      const name = portNameMap.gpios[pin];
       const dir = directions[pin] === BIT_SET ? DIRECTION_OUT : DIRECTION_IN;
       const alow = polarities[pin] === BIT_SET;
       const pul = pullUps[pin] === BIT_SET;
@@ -100,7 +101,8 @@ class Converter {
       const olat = olats[pin] === BIT_SET ? OLAT_LOGIC_HIGH : OLAT_LOGIC_LOW;
 
       return {
-        pin: Converter.fromInternalPin(pin),
+        port: portNameMap.name,
+        pin: name,
         direction: dir,
         pullup: pul,
         activeLow: alow,
@@ -109,8 +111,6 @@ class Converter {
       };
     });
   }
-
-  static fromInternalPin(pin, map) { return pin; }
 
   static fromGpioInterrupt(inten, ctrl, dVal) {
     if(!inten) { return EDGE_NONE; }

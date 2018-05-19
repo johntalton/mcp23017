@@ -100,7 +100,7 @@ class Mcp23 {
 
   profile() { return Common.profile(this._bus, this._bank); }
 
-  state() { return Common.state(this._bus, this._bank, this._sequential); }
+  state() { return Common.state(this._bus, this._bank, this._sequential, this._pinmap); }
 
   interruptPortA() {}
   interruptPortB() {}
