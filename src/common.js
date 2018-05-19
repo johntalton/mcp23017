@@ -5,9 +5,6 @@ const { Converter } = require('./converter.js');
 
 const BASE_10 = 10;
 
-const HIGH = 1;
-const LOW = 0;
-
 const REGISTERS = [{
   // bank 0 layout
   IODIRA: 0x00,
@@ -63,9 +60,16 @@ const REGISTERS = [{
 // only read non-data bytes (aka, do not cause interupt reset)
 // note, we also exclude OLAT // todo include OLAT
 const PIN_STATE_SIZE = 8;
-const PIN_STATE_BLOCKS = [
-  [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE]], // bank 0 layout (interlaced)
-  [[0x00, PIN_STATE_SIZE], [0x10, PIN_STATE_SIZE]] // bank 1 layout (split)
+const PIN_STATE_SEQ_BLOCKS = [
+  [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE], [0x14, 2]], // bank 0 layout (interlaced)
+  [[0x00, PIN_STATE_SIZE], [0x0A], [0x10, PIN_STATE_SIZE], [0x1A]] // bank 1 layout (split)
+  // ... above could also be writen [0x0A, PIN_STAET_SIZE + 1] to save *a* command packet
+];
+const PIN_STATE_BYTE_BLOCKS = [
+  [[0x00, 2], [0x02, 2], [0x04, 2], [0x06, 2],
+   [0x08, 2], [0x0A, 2], [0x0C, 2], [0x0E, 2], [0x14, 2]], // bank 0 (wobleAB)
+  [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+   0x010,0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A] // bank 1 (split)
 ];
 
 /**
@@ -133,37 +137,59 @@ class Common {
   static setProfile(bus, bank, profile) {
     const pb = (profile.bank !== undefined && profile.bank !== false) ? profile.bank : bank;
     const iocon = Converter.toIocon(profile, pb);
+
     console.log('setProfile', iocon.toString(2));
-    console.log(' --------------------');
-    if(bank === Common.BANK0 && profile.sequential) { console.log(' Sequential addressing / interlaced')}
-    if(bank === Common.BANK0 && !profile.sequential) { console.log(' Byte Mode (Wobble AB)'); }
-    if(bank === Common.BANK1 && profile.sequential) { console.log(' Sequential addressing / block'); }
-    if(bank === Common.BANK1 && !profile.sequential) { console.log(' Byte Mode'); }
-    console.log(' --------------------');
+
+    //console.log(' --------------------');
+    //if(bank === Common.BANK0 && profile.sequential) { console.log(' Sequential addressing / interlaced')}
+    //if(bank === Common.BANK0 && !profile.sequential) { console.log(' Byte Mode (Wobble AB)'); }
+    //if(bank === Common.BANK1 && profile.sequential) { console.log(' Sequential addressing / block'); }
+    //if(bank === Common.BANK1 && !profile.sequential) { console.log(' Byte Mode'); }
+    //console.log(' --------------------');
+
     return bus.write(REGISTERS[bank].IOCON, iocon)
       .then(() => pb);
   }
 
-  static state(bus, bank) {
+  static state(bus, bank, sequential) {
     // return the split read buffer to its memmapped
     // offset/size, such that we can use the same
     // register addresses to access each buffer
     function fixUp(buf) {
       if(bank === Common.BANK0) { return Buffer.from(buf); }
       return Buffer.concat([
-        buf.slice(0, 0 + PIN_STATE_SIZE),
+        buf.slice(0, PIN_STATE_SIZE),
         Buffer.from(new Array(8)), // +3 to get to 11 and skip +5 to next block
-        buf.slice(8, 8 + PIN_STATE_SIZE)
+        buf.slice(PIN_STATE_SIZE)
+      ]);
+    }
+    function fixUpWithOlat(buf) {
+      if(bank === Common.BANK0) { return Buffer.from(buf); }
+      return Buffer.concat([
+        buf.slice(0, PIN_STATE_SIZE + 1),
+        Buffer.from(new Array(6)),
+        buf.slice(PIN_STATE_SIZE + 1)
       ]);
     }
 
-    return BusUtil.readblock(bus, PIN_STATE_BLOCKS[bank])
-      .then(fixUp)
+    const block = sequential ? PIN_STATE_SEQ_BLOCKS[bank] : PIN_STATE_BYTE_BLOCKS[bank];
+
+    return BusUtil.readblock(bus, block)
+      //.then(fixUp)
+      .then(fixUpWithOlat)
       .then(buf => {
-        console.log('reading state for bank', bank, buf);
+        console.log('state read from bank', bank);
+        console.log(buf);
+
         const iocon = buf.readUInt8(REGISTERS[bank].IOCON)
         const ioconAlt = buf.readUInt8(REGISTERS[bank].IOCON_ALT)
         if(iocon !== ioconAlt) { throw Error('iocon missmatch: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+
+        const profile = Converter.fromIocon(iocon);
+        if(profile.bank !== bank) {
+          console.log('read profiles bank is not the bank used to read!');
+        }
+
 
         const a = Converter.fromPortState({
           iodir: buf.readUInt8(REGISTERS[bank].IODIRA),
@@ -172,7 +198,8 @@ class Common {
           defval: buf.readUInt8(REGISTERS[bank].DEFVALA),
           intcon: buf.readUInt8(REGISTERS[bank].INTCONA),
           gppu: buf.readUInt8(REGISTERS[bank].GPPUA),
-          intf: buf.readUInt8(REGISTERS[bank].INTFA)
+          intf: buf.readUInt8(REGISTERS[bank].INTFA),
+          olat: buf.readUtin8(REGISTERS[bank].OLATA)
         });
 
         const b = Converter.fromPortState({
@@ -182,11 +209,12 @@ class Common {
           defval: buf.readUInt8(REGISTERS[bank].DEFVALB),
           intcon: buf.readUInt8(REGISTERS[bank].INTCONB),
           gppu: buf.readUInt8(REGISTERS[bank].GPPUB),
-          intf: buf.readUInt8(REGISTERS[bank].INTFB)
+          intf: buf.readUInt8(REGISTERS[bank].INTFB),
+          olat: buf.readUInt8(REGISTERS[bank].OLATB)
         });
 
         return {
-          profile: Converter.fromIocon(iocon),
+          profile: profile,
           a: a,
           b: b
         };

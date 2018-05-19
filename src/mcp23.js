@@ -2,12 +2,9 @@
 const { BusUtil, BitUtil } = require('and-other-delights');
 
 const { Common } = require('./common.js');
-// const { Converter } = require('./converter.js');
+const { DEFAULT_NAMES } = require('./names.js');
 
 const BASE_10 = 10;
-
-const HIGH = 1;
-const LOW = 0;
 
 /**
  *
@@ -71,13 +68,6 @@ class Transaction {
 
 }
 
-const DEFAULT_PIN_MAP = {
-  0: { port: 'A', pin: 0 },
-  7: { port: 'A', pin: 7 },
-  8: { port: 'B', pin: 0 },
- 16: { port: 'B', pin: 7 }
-};
-
 /**
  *
  **/
@@ -89,7 +79,8 @@ class Mcp23 {
   constructor(bus, options) {
     this._bus = bus;
     this._bank = 0;
-    this._pinmap = DEFAULT_PIN_MAP;
+    this._sequential = true;
+    this._pinmap = options.names !== undefined ? options.names : DEFAULT_NAMES;;
   }
 
   get bank() { return this._bank; }
@@ -101,55 +92,32 @@ class Mcp23 {
 
   setProfile(profile) {
     return Common.setProfile(this._bus, this._bank, profile)
-      .then(newbank => this._bank = newbank); // cache new bankX
+      .then(newbank => {
+        this._bank = newbank; // cache new bankX
+        this._sequential = profile.sequential;
+      });
   }
 
-  profile() { return Common.profile(this._bus, this.bank); }
+  profile() { return Common.profile(this._bus, this._bank); }
 
-  state() { return Common.state(this._bus, this.bank); }
+  state() { return Common.state(this._bus, this._bank, this._sequential); }
 
   interruptPortA() {}
   interruptPortB() {}
 
-  getGpio(gpio, opts) {
-    const options = Util.gpioOptions(opts);
+  exportGpio(gpio, direction, edge, opts) {
+    const options = {
+      direction: direction,
+      edge: edge,
+      ...opts
+    };
     return Common.exportGpio(gpio, options);
-    return Promise.resolve(new Gpio(bank, pin, options))
   }
 
   getPort(port) { return Promise.reject(); }
 }
 
-/**
- *
- **/
-class Util {
-  static parseGpio(gpio) {
-    if(Number.isNaN(parseInt(gpio, BASE_10))) {
-      // its not a number, we also accept a string
-      if(typeof gpio !== 'string') { throw Error('unknown gpio param'); }
-      if(gpio.length < 2) { throw Error('must specify bank and pin'); }
-      const bankStr = gpio.charAt(0);
-      const gpioStr = gpio.charAt(1);
-
-      if(bankStr !== 'A' &&  bankStr !== 'B') { throw Error('unknown bank name'); }
-      const bank = bankStr === 'A' ? 0 : 1;
-
-      const pin = parseInt(gpioStr, BASE_10);
-      if(Number.isNaN(pin)) { throw Error('unknown gpio pin'); }
-
-      return [bank, pin];
-    }
-
-    if(gpio < 0 || gpio > 15) { throw Error('out of range'); }
-
-    if(gpio >= 8) { return [1, gpio - 8]; }
-
-    return [0, pin];
-  }
-}
-
 Mcp23.BANK0 = Common.BANK0;
 Mcp23.BANK1 = Common.BANK1;
 
-module.exports = { Mcp23  };
+module.exports = { Mcp23 };

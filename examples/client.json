@@ -13,16 +13,28 @@
       "profile": {
         "mutable": false,
 
-        "bank": 1,
-        "sequential": true,
+        "bank": 0,
+        "sequential": false,
         "hardwareAddress": false,
         "slew": true,
 
         "interrupt": {
           "mirror": false,
-          "mode": "open-drain"
+          "mode": "active-low"
         }
-      }
+      },
+
+      "names": {
+        "portA": { "name": "A", "gpios": [ 0, 1, 2, 3, 4, 5, 6, "led" ] },
+        "portB": { "name": "B", "gpios": [ 8, 9, 10, 11, 12, 13, 14, 15 ] }
+      },
+
+      "export": false,
+      "validateExports": true,
+      "exports": [
+        { "name": "button", "pin": 6, "direction": "in", "edge": "both", "activeLow": false },
+        { "name": "led", "pin": "led", "direction": "out" }
+      ]
     }
   ]
 }
