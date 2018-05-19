@@ -62,14 +62,14 @@ const REGISTERS = [{
 const PIN_STATE_SIZE = 8;
 const PIN_STATE_SEQ_BLOCKS = [
   [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE], [0x14, 2]], // bank 0 layout (interlaced)
-  [[0x00, PIN_STATE_SIZE], [0x0A], [0x10, PIN_STATE_SIZE], [0x1A]] // bank 1 layout (split)
+  [[0x00, PIN_STATE_SIZE], 0x0A, [0x10, PIN_STATE_SIZE], 0x1A] // bank 1 layout (split)
   // ... above could also be writen [0x0A, PIN_STAET_SIZE + 1] to save *a* command packet
 ];
 const PIN_STATE_BYTE_BLOCKS = [
   [[0x00, 2], [0x02, 2], [0x04, 2], [0x06, 2],
    [0x08, 2], [0x0A, 2], [0x0C, 2], [0x0E, 2], [0x14, 2]], // bank 0 (wobleAB)
-  [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-   0x010,0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A] // bank 1 (split)
+  [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A,
+   0x10,0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A] // bank 1 (split)
 ];
 
 /**
@@ -164,11 +164,24 @@ class Common {
       ]);
     }
     function fixUpWithOlat(buf) {
-      if(bank === Common.BANK0) { return Buffer.from(buf); }
+      if(buf.length !== 18) { throw Error('buffer length strange: ' + buf.length); }
+
+      if(bank === Common.BANK0) {
+        return Buffer.concat([
+          buf.slice(0, -2),
+          Buffer.from(new Array(4).fill(0)),
+          buf.slice(-2)
+        ]);
+      }
+
       return Buffer.concat([
-        buf.slice(0, PIN_STATE_SIZE + 1),
-        Buffer.from(new Array(6)),
-        buf.slice(PIN_STATE_SIZE + 1)
+        buf.slice(0, PIN_STATE_SIZE),
+        Buffer.from(new Array(2).fill(0)),
+        buf.slice(PIN_STATE_SIZE, PIN_STATE_SIZE + 1),
+        Buffer.from(new Array(5).fill(0)),
+        buf.slice(PIN_STATE_SIZE + 1, -1),
+        Buffer.from(new Array(2).fill(0)),
+        buf.slice(-1)
       ]);
     }
 
@@ -199,7 +212,7 @@ class Common {
           intcon: buf.readUInt8(REGISTERS[bank].INTCONA),
           gppu: buf.readUInt8(REGISTERS[bank].GPPUA),
           intf: buf.readUInt8(REGISTERS[bank].INTFA),
-          olat: buf.readUtin8(REGISTERS[bank].OLATA)
+          olat: buf.readUInt8(REGISTERS[bank].OLATA)
         });
 
         const b = Converter.fromPortState({

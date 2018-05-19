@@ -13,8 +13,8 @@
       "profile": {
         "mutable": false,
 
-        "bank": 0,
-        "sequential": false,
+        "bank": 1,
+        "sequential": true,
         "hardwareAddress": false,
         "slew": true,
 

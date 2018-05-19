@@ -97,7 +97,7 @@ class Converter {
       const inten = intEnableds[pin] === BIT_SET;
       const defVal = defaultValues[pin] === BIT_SET ? HIGH : LOW;
       const intCtrl = intControls[pin] === BIT_SET;
-      const olat = olats[pin] === BIT_SET ? OLAT_LOGIC_HIGH : OLAT_LOCIG_LOW;
+      const olat = olats[pin] === BIT_SET ? OLAT_LOGIC_HIGH : OLAT_LOGIC_LOW;
 
       return {
         pin: Converter.fromInternalPin(pin),
