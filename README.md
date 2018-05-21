@@ -2,6 +2,21 @@
 
 Microchip's 16 bit wide gpio chip provides the ability to offload gpio to dedicated chip via i2c or spi interface.
 
+This implmentation sports several feature not found elsewere (js or otherwise). Providing direct access to the full
+feautre set of the chip.
+
+Such as:
+ - Smart Bank 0/1 Sniffing
+ - Block addressing (bulk access)
+ - Wobble A/B addressing (fast access)
+ - Dual / Single and Poll interrupt support
+ - Pull-up resistor state access
+ - Output and Output Latch access
+ - Gpio / Byte / Word interface (with access optimizations)
+ - Dynamic Pin naming schemes
+ - I2C and SPI generic interface (beta)
+ - Detailed profile configuration (slew, hardward address, etc
+
 ### Example
 
 Create a new instance using `from`
@@ -70,6 +85,38 @@ It does this by reading several addressing and probing state to attempt to guess
     client.bank = guess;
   })
 ```
+
+### Dynamic naming
+
+Naming in the first pain of all developers, and as such the library can be initialized with custom name maps.
+Name map descripe the port and pin layout.
+
+Three common layouts are included
+ - gpio16
+ - port names
+ - pysical names
+
+While using the existing constant `PHYSICAL_NAME` this example shows how to init with a custom map.
+
+```javascript
+   ...
+    .then(bus => Mcp23.from(bus, {
+      portA: { name: 'A', gpios: [21, 22, 23, 24, 25, 26, 27, 28] },
+      portB: { name: 'B', gpios: [1, 2, 3, 4, 5, 6, 7] }
+    }))
+    .then(device => {
+      ...
+      const button = device.exportGpio(21, ...)
+    })
+    
+```
+
+The `DEFAULT_NAMES` constant is an alias for `GPIO16_NAMES` (which lists the names a 0 .. 15).
+Note that `gpios` array values must be globaly unique to the chip (aka you can not have 0..7 and 0..7 on each port, 
+`PORT_NAME` constant solves this by scoping A0..A7, B0..B7).
+
+Custom maps can use a mix of types (such as "led" etc) as long as they are unique and equitable (aka `===`)
+
 
 ### SysFS (device tree overlay)
 
