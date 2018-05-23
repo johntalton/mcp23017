@@ -36,7 +36,8 @@ class Config {
     const name = device.name !== undefined ? device.name : idx.toString(10);
     const active = device.active !== undefined ? device.active : true;
 
-    const sniffBank = device.sniffBank !== undefined ? device.sniffBank : true;
+    const resetOS = device.resetOnStart !== undefined ? device.resetOnStart : false; // done not clober anything, safe
+    const sniffMode = device.sniffMode !== undefined ? device.sniffMode : true;
     const setPoS = device.setProfileOnStart !== undefined ? device.setProfileOnStart : true;
     const validPoS = device.validateProfileOnStart !== undefined ? device.validateProfileOnStart : true;
 
@@ -49,7 +50,8 @@ class Config {
       active: active,
       bus: { ...device.bus },
 
-      sniffBank: sniffBank,
+      resetOnStart: resetOS,
+      sniffMode: sniffMode,
 
       setProfileOnStart: setPoS,
       validateProfileOnStart: validPoS,

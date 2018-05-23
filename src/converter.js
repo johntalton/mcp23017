@@ -103,11 +103,19 @@ class Converter {
     };
   }
 
-  static makeSetBit(offset, value) {
-    const tail = new Array(8 - offset - 1).fill(0);
-    const prams = new Array(offset).fill(0).concat([value], tail);
+  static makeBit(offset, fill, value) {
+    const tail = new Array(8 - offset - 1).fill(fill);
+    const prams = new Array(offset).fill(fill).concat([value], tail);
     //console.log('prams', offset, prams);
     return BitUtil.packbits(PORT_PACKMAP, ...prams);
+  }
+
+  static makeSetBit(offset, value) {
+    return Converter.makeBit(offset, BIT_UNSET, value);
+  }
+
+  static makeUnsetBit(offset, value) {
+    return Converter.makeBit(offset, BIT_SET, value);
   }
 
   static toPortState(gpios, portPinmap) {
@@ -127,7 +135,7 @@ class Converter {
 
       console.log('\tadding pin to state', gpio.pin, pin, direction, gpio.direction);
 
-      const iodir = Converter.makeSetBit(pin, direction);
+      const iodir = Converter.makeUnsetBit(pin, direction);
       const iopol = Converter.makeSetBit(pin, polarity);
       const gpinten = Converter.makeSetBit(pin, intenabled);
       const defval = Converter.makeSetBit(pin, defaultval);
@@ -137,7 +145,7 @@ class Converter {
 
 
       return {
-        iodir: state.iodir | iodir,
+        iodir: state.iodir & iodir, // not the iodir And
         iopol: state.iopol | iopol,
         gpinten: state.gpinten | gpinten,
         defval: state.defval | defval,
@@ -146,7 +154,7 @@ class Converter {
         olat: state.olat | olat
       };
     }, {
-      iodir: 0,
+      iodir: 0xFF, // note the io dir start // todo make const
       iopol: 0,
       gpinten: 0,
       defval: 0,
@@ -186,7 +194,7 @@ class Converter {
     const pins = [0, 1, 2, 3, 4, 5, 6, 7];
     return pins.map(index => {
       const pin = portNameMap.gpios[index];
-      const dir = directions[index] === BIT_SET ? DIRECTION_OUT : DIRECTION_IN;
+      const dir = directions[index] === BIT_SET ? DIRECTION_IN : DIRECTION_OUT;
       const alow = polarities[index] === BIT_SET;
       const pul = pullUps[index] === BIT_SET;
       const pint = intFlags[index] === BIT_SET;
@@ -214,10 +222,10 @@ class Converter {
     return dVal === HIGH ? EDGE_FALLING : EDGE_RISING; // todo correct direction?
   }
 
-  static toIocon(profile, bank) {
-    const b = bank;
+  static toIocon(profile, mode) {
+    const b = mode.bank;
+    const s = mode.sequential ? SEQ_EN : SEQ_DEN;
     const m = profile.interrupt.mirror ? MIR_EN : MIR_DEN;
-    const s = profile.sequential ? SEQ_EN : SEQ_DEN;
     const d = profile.slew ? SLEW_EN : SLEW_DEN;
     const h = profile.hardwareAddress ? HWA_EN : HWA_DEN;
 
@@ -276,7 +284,15 @@ class Converter {
     if(bank === Bank.BANK0 && !sequential) { return MODE_16BIT_POLL; }
     if(bank === Bank.BANK1 && sequential) { return MODE_DUAL_BLOCKS; }
     if(bank === Bank.BANK1 && !sequential) { return MODE_8BIT_POLL; }
-    throw Error('unknown mode / sequentail');
+    throw Error('unknown mode / sequentail: ' + bank + ' / ' + sequential);
+  }
+
+  static toIoconMode(mode) {
+    if(mode === MODE_INTERLACED_BLOCK) { return { bank: Bank.BANK0, sequential: true }; }
+    if(mode === MODE_DUAL_BLOCKS) { return { bank: Bank.BANK1, sequential: true }; }
+    if(mode === MODE_16BIT_POLL) { return { bank: Bank.BANK0, sequential: false }; }
+    if(mode === MODE_8BIT_POLL) { return { bank: Bank.BANK1, sequential: false }; }
+    throw Error('unknonw mode');
   }
 
   static fromIoconInterrupt(odEn, activeLow) {

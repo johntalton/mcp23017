@@ -3,75 +3,11 @@ const { EventEmitter } = require('events');
 const { BusUtil, BitUtil } = require('and-other-delights');
 
 const { Converter } = require('./converter.js');
-const { Common } = require('./common.js');
+const { Common } = require('./common/common.js');
 const { DEFAULT_NAMES } = require('./names.js');
 const Bank = require('./defines.js');
 
 const BASE_10 = 10;
-
-/**
- *
- **/
-class Gpio extends EventEmitter {
-  constructor(pin, controller) {
-    this.pin = pin;
-    this.controller = controller;
-  }
-
-  direction() { return this.controller.pinDirection(this.pin); }
-  setDirection(direction) {}
-
-  edge() {}
-  setEdge(edge) {}
-
-  activeLow() {}
-  setActiveLow(activeLow) {}
-
-  read() { return Common.read(this.controller, this.pin); }
-  write(value) { return Common.write(this.controller, this.pin, value); }
-
-  watch(cb) {}
-  unwatch(cb) {}
-
-  readTransaction() {}
-  writeTransaction() {}
-}
-
-/**
- *
- **/
-class Port {
-  readUInt8() {}
-  readInt8() {}
-
-  writeUInt8(value) {}
-  writeInt8(value) {}
-
-  readTransaction() {}
-  writeTransaction() {}
-}
-
-/**
- *
- **/
-class Word {
-  readUInt16BE() {}
-  readInt16BE() {}
-  readUInt16LE() {}
-  readInt16LE() {}
-
-  readTransaction() {
-  }
-  writeTransaction() {}
-}
-
-/**
- *
- **/
-class Transaction {
-
-}
-
 
 /**
  *
@@ -83,13 +19,12 @@ class Mcp23Base {
 
   constructor(bus, options) {
     this._bus = bus;
-    this._bank = 0;
-    this._sequential = true;
+    this._mode = Common.MODE_MAP_DEFAULT;
     this._pinmap = options.names !== undefined ? options.names : DEFAULT_NAMES;;
   }
 
-  get bank() { return this._bank; }
-  set bank(b) { this._bank = b; }
+  get mode() { return Converter.fromIoconMode(this._mode.bank, this._mode.sequential); }
+  set mode(m) { this._mode = Converter.toIoconMode(m); }
 
   close() {}
 
@@ -98,14 +33,19 @@ class Mcp23Base {
   interruptPortB() {}
 
   softwareReset() { return Common.softwareReset(this._bus); }
-  sniffBank() { return Common.sniffBank(this._bus); }
+  sniffMode() {
+    return Common.sniffMode(this._bus).then(guess => {
+      return Converter.fromIoconMode(guess.bank, guess.sequential);
+    });
+  }
 
   setProfile(profile) {
-    const newBank = (profile.bank !== undefined && profile.bank !== false) ? profile.bank : this._bank;
-    return Common.setProfile(this._bus, this._bank, Converter.toIocon(profile, newBank))
+    const newUserMode = (profile.mode !== undefined && profile.mode !== false) ? profile.mode : this._mode;
+    console.log('setProfile', newUserMode);
+    const newMode = Converter.toIoconMode(newUserMode);
+    return Common.setProfile(this._bus, this._mode, Converter.toIocon(profile, newMode))
       .then(() => {
-        this._bank = newBank; // cache new bankX
-        this._sequential = profile.sequential;
+        this._mode = newMode;
       });
   }
 
@@ -113,10 +53,10 @@ class Mcp23Base {
   //wasProfileTouched() {}
 
   profile() {
-    return Common.profile(this._bus, this._bank)
+    return Common.profile(this._bus, this._mode)
+      .then(iocon => { console.log('iocon', BitUtil.unpackbits(BitUtil.TRUE_8_PACKMAP, iocon));  return iocon; })
       .then(Converter.fromIocon)
       .then(profile => {
-        console.log(' --- ', this._bank, profile.bank);
         this._bank = profile.bank;
         this._sequential = profile.sequential;
         return profile;
@@ -124,7 +64,7 @@ class Mcp23Base {
   }
 
   state() {
-    return Common.state(this._bus, this._bank, this._sequential)
+    return Common.state(this._bus, this._mode)
       .then(state => {
         const profile = Converter.fromIocon(state.iocon);
         if(profile.bank !== this._bank) {

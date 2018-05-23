@@ -6,6 +6,23 @@ const rasbus = require('rasbus');
 const { Mcp23 } = require('../');
 
 
+  function isDefaultGpio(gpio) { // todo these function have knowledge (move out)
+    if(gpio.direction !== 'in') { return false; }
+    if(gpio.pullup !== false) { return false; }
+    if(gpio.activeLow !== false) { return false; }
+    if(gpio.edge !== 'none') { return false; }
+    return true;
+  }
+
+  function matchGpios(exportGpio, activeGpio) { // todo these function have knowledge (move out)
+    if(exportGpio.direction !== activeGpio.direction) { return [false, 'direction']; }
+    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pullup']; }
+    if(exportGpio.activeLow !== activeGpio.activeLow) { return [false, 'activeLow']; }
+    if(exportGpio.mode !== activeGpio.mode) { return [false, 'mode']; }
+    return [true, ''];
+  }
+
+
 
 class Util {
   static logProfile(profile) {
@@ -25,8 +42,12 @@ class Util {
   }
 
   static logGpio(gpio) {
+    const skipDefaults = true;
+
+    if(skipDefaults && isDefaultGpio(gpio)) { return; }
+
     if(gpio.direction === 'in') { // todo should we use const here or is string a better interface
-      console.log('#  \u21E6 Input Port:', gpio.port, 'Pin:', gpio.pin, '(edge', gpio.mode, 'activeLow', gpio.activeLow + ')');
+      console.log('# \u21E6 Input Port:', gpio.port, 'Pin:', gpio.pin, '(edge', gpio.edge, 'activeLow', gpio.activeLow + ')');
       if(gpio.interruptEnabled) {
         if(gpio.pendingInterrupt) { console.log('#   \uD83D\uDD14 (pending interrupt) \uD83D\uDECE'); }
       }
@@ -35,7 +56,7 @@ class Util {
       }
     }
     else if(gpio.direction === 'out'){
-      console.log('#  \u21E8 Ouptput Port:', gpio.port, 'Pin:', gpio.pin);
+      console.log('# \u21E8 Ouptput Port:', gpio.port, 'Pin:', gpio.pin);
     }
     else { throw Error('unknown direction ' + gpio.direction); }
 
@@ -66,9 +87,9 @@ class Device {
 
   static _configure(config) {
     return Promise.resolve()
-      .then(() => config.client.softwareReset())
+      .then(() => config.resetOnStart ? config.client.softwareReset() : Promise.resolve())
       .then(() => Device.configSniff(config))
-      .then(guess => Device.configUpdateBank(config, guess))
+      .then(guess => Device.configUpdateMode(config, guess))
       .then(() => config.client.profile())
       .then(profile => {
         console.log('# Initial Device Profile');
@@ -94,73 +115,71 @@ class Device {
               }
 
               return config.client.profile().then(profile => {
-                const [match, why] = Device.configValidateProfile(config, config.profile, profile);
+                const [match, why] = Device.compairProfiles(config.profile, profile);
                 if(!match) { throw Error('pedantic validation missmatch: ' + why); }
                 console.log('passed pedantic validation');
                 Util.logProfile(profile);
               });
             });
         }
-        else {
-          console.log('skipping profile set on startup');
-        }
+
+        console.log('skipping profile set on startup');
         return Promise.resolve();
       })
       .then(() => config.client.state())
       .then(state => {
+        Util.logState(state);
         const effectiveExports = Device.configValidateExports(config, state)
         return Device.configExports(config, effectiveExports);
       });
   }
 
+
   static configSniff(config) {
-    if(!config.sniffBank) {
+    if(!config.sniffMode) {
       console.log('skipping sniff (you are trusting)');
       return Promise.resolve();
     }
 
-    return config.client.sniffBank()
-      .then(({ one, zero, guess }) => {
-        if(one && zero) { console.log('# ambigious sniff'); }
-        if(!one && !zero) { console.log('# sniff found no bank, is this even a mcp23'); }
-        if(!one && zero) { console.log('# sniffed Zero'); }
-        if(one && !zero) { console.log('# sniffed One'); }
-
+    return config.client.sniffMode()
+      .then(guess => {
+        console.log('sniffMode guess', guess);
         return guess;
       });
   }
 
-  static configUpdateBank(config, guess) {
+  static configUpdateMode(config, guess) {
     // guess can be undefined indicating we skipped any sniffing
-    // the profiles bank can be false or a bank number
-    // false would indicate that the current bank should be used
-    const curPB = config.profile.bank;
-    const curCB = config.client.bank;
+    // the profiles mode can be false or a mode
+    // false would indicate that the current mode should be used
+    const curPM = config.profile.mode;
+    const curCM = config.client.mode;
 
     if(guess === undefined) {
-      if(curPB !== false && curPB === curCB) {
+      if(curPM !== false && curPM === curCM) {
         console.log('no guess, matched profile and client (best effort)');
         return;
       }
 
-      if(curPB === false) {
+      if(curPM === false) {
         console.log('no guess, profile agnostic, assume client (no net)');
         return;
       }
 
-      console.log('no guess, assuming from profile bank (hope you are right)');
-      // update working bank
-      config.client.bank = curPB;
+      console.log('no guess, assuming from profile mode (hope you are right)');
+      // update working mode
+      console.log(' update client cache', guess);
+      config.client.mode = curPM;
       return;
     }
 
-    if(guess === curCB) {
-      if(curPB === false) {
-        console.log('guess matches client, profile is bank agnostic');
+    if(guess === curCM) {
+      if(curPM === false) {
+        console.log('guess matches client, profile is moder agnostic');
         return;
       }
 
-     if(curPB === guess) {
+     if(curPM === guess) {
         console.log('guess matches client and profile');
         return;
       }
@@ -170,15 +189,16 @@ class Device {
       }
     }
 
-    if(curPB === false) {
-      console.log('updating client from guess, profile is bank agnostic');
+    if(curPM === false) {
+      console.log('updating client from guess, profile is mode agnostic');
     }
     else {
       console.log('updating clinet from guess, profile will override if set')
     }
 
-    // update working bank
-    config.client.bank = guess;
+    // update working mode
+    console.log(' update client cache', guess);
+    config.client.mode = guess;
     return;
   }
 
@@ -187,11 +207,14 @@ class Device {
       console.log('skipping profile validation');
       return [false, 'skipped'];
     }
+    return Device.compairProfiles(userProfile, activeProfile);
+  }
 
+  static compairProfiles(userProfile, activeProfile) {
     //console.log('# Validating active device profile');
     // Util.logProfile(activeProfile);
 
-    // todo less hardcody
+    // todo less hardcod
     if(activeProfile.mode !== userProfile.mode) { return [false, 'invalid mode']; }
     if(activeProfile.hardwareAddress !== userProfile.hardwareAddress) { return [false, 'invalid hardware address']; }
     if(activeProfile.slew !== userProfile.slew) { return [false, 'invalid slew']; }
@@ -210,21 +233,6 @@ class Device {
     return bits;
   }
 
-  static isDefaultGpio(gpio) { // todo these function have knowledge (move out)
-    if(gpio.direction !== 'out') { return false; }
-    if(gpio.pullup !== false) { return false; }
-    if(gpio.activeLow !== false) { return false; }
-    if(gpio.mode !== 'none') { return false; }
-    return true;
-  }
-
-  static matchGpios(exportGpio, activeGpio) { // todo these function have knowledge (move out)
-    if(exportGpio.direction !== activeGpio.direction) { return [false, 'direction']; }
-    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pullup']; }
-    if(exportGpio.activeLow !== activeGpio.activeLow) { return [false, 'activeLow']; }
-    if(exportGpio.mode !== activeGpio.mode) { return [false, 'mode']; }
-    return [true, ''];
-  }
 
   static configValidateExports(config, state) {
     if(config.validateExports === false) {
@@ -242,7 +250,7 @@ class Device {
       const exp = Device.exportFor(gpio.pin, config.exports);
       if(exp === undefined) {
         // nothing exported
-        if(!Device.isDefaultGpio(gpio)) {
+        if(!isDefaultGpio(gpio)) {
           if(config.adoptExistingExports) {
             // add to effectiveExports
             console.log('chip has configured gpio that is not defined by exports (adopting on update)');
@@ -256,12 +264,12 @@ class Device {
       }
       else {
         // we have a defined export, if not configured, validate it matches
-        if(Device.isDefaultGpio(gpio)) {
+        if(isDefaultGpio(gpio)) {
           console.log('chip has unconfigured gpio, exports defined new (semi-safe to add on update)');
           effective.push(exp);
         }
         else {
-          const [match, why] = Device.matchGpios(gpio, exp);
+          const [match, why] = matchGpios(gpio, exp);
           if(match) {
             console.log('happy day, gpio and export match');
             effective.push(exp);
@@ -285,7 +293,7 @@ class Device {
   }
 
   static configExports(config, exports) {
-    if(config.export === false) {
+    if(config.setExportsOnStart === false) {
       console.log('skiping export of gpio');
       return Promise.resolve();
     }

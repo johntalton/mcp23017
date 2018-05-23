@@ -25,7 +25,8 @@
     "no-loops",
     "fp",
     "no-use-extend-native",
-    "jsdoc"
+    "jsdoc",
+    "spellcheck"
   ],
   "rules": {
     "no-console": "off",
@@ -237,7 +238,7 @@
 
 
     "fp/no-arguments": "error",
-    "fp/no-class": "error",
+    "fp/no-class": "warn",
     "fp/no-delete": "error",
     "fp/no-events": "error",
     "fp/no-get-set": "error",
@@ -245,11 +246,11 @@
     "fp/no-loops": "error",
     "fp/no-mutating-assign": "error",
     "fp/no-mutating-methods": "error",
-    "fp/no-mutation": "error",
+    "fp/no-mutation": ["error", { "commonjs": true, "withThis": true }],
     "fp/no-nil": "error",
     "fp/no-proxy": "error",
     "fp/no-rest-parameters": "error",
-    "fp/no-this": "error",
+    "fp/no-this": "warn",
     "fp/no-throw": "error",
     "fp/no-unused-expression": "error",
     "fp/no-valueof-field": "error",
@@ -273,7 +274,19 @@
     "jsdoc/require-param-type": "error",
     "jsdoc/require-returns-description": "error",
     "jsdoc/require-returns-type": "error",
-     "jsdoc/valid-types": "error"
+    "jsdoc/valid-types": "error",
+
+
+
+    "spellcheck/spell-checker": [ "error", {
+      "identifiers": false,
+      "minLength": 3,
+      "skipWords": [
+        "todo", "const",
+        "rasbus", "mcp23", "mcp23017",
+        "gpio", "iocon"
+      ]
+    }]
   }
 }
 

@@ -2,6 +2,17 @@
 const { Config } = require('./client-config.js');
 const { Device } = require('./client-device.js');
 
+
+Lifecycle.configure('client.json')
+// Lifecycle.empty()
+  .registerEventing(EventEmitter)
+  .registerEventingOptional(Mqtt)
+  .registerDeviceOptional(Onoff)
+  .registerDevice(Tcs)
+  .registerDevice(Mcp23)
+
+
+
 function setupDevices(config) {
   return config.devices.map(device => Device.setupWithRetry(device));
 }
