@@ -1,6 +1,6 @@
-# Microchip 16-bit I/O Expander (mcp23x17)
+# Microchip 8/16-bit I/O Expander (mcp23xxx)
 
-Microchip's 16 bit wide gpio chip provides the ability to offload gpio to dedicated chip via i2c or spi interface.
+Microchip's 8bit and 16bit wide gpio chip provides the ability to offload gpio to dedicated chip via i2c or spi interface.
 
 This implmentation sports several feature not found elsewere (js or otherwise). Providing direct access to the full
 feautre set of the chip.
@@ -15,7 +15,8 @@ Such as:
  - Gpio / Byte / Word interface (with access optimizations)
  - Dynamic Pin naming schemes
  - I2C and SPI generic interface (beta)
- - Detailed profile configuration (slew, hardward address, etc
+ - 8-bit version support (beta - missing proper iocon register setup)
+ - Detailed profile configuration (slew, hardward address, etc.)
 
 ### Example
 
@@ -80,9 +81,8 @@ It does this by reading several addressing and probing state to attempt to guess
 
 ```javascript
   ...
-  client.sniffBank().then(({ guess }) => {
-    console.log('smells like bank', guess);
-    client.bank = guess;
+  client.sniffBank().then(guess => {
+    console.log('smells like bank/sequential', guess);
   })
 ```
 
