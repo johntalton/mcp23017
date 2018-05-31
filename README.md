@@ -31,6 +31,20 @@ Create a new instance using `from`
     .catch(e => ...)
 ```
 
+### Interrupts
+
+The library assume external resources for providing interrupt callbacks into the library.  
+
+A common package like `onoff` can be used to capture the interrupts (via efficiant `.watch` methods).  Though, no specific dependency exists.  
+
+Software interrupts can also be achived, at the cost of polling the chip itself.
+
+### Bus (i2c / spi)
+
+Similar to gpio for interrupts, the library only assumes a common interface for bus implementations.  This is currently tied to the API used in `@johntalton/rasbus` wrapper package.  
+
+`i2c-bus` and `spi-device` are well tested.
+
 ### Pins / Ports / Word up
 
 The expander can be accessed in multiple use cases, by pin, port or full word, and multiple interrupt can be configured 
