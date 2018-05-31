@@ -2,8 +2,7 @@
 const fs = require('fs');
 
 // local imports
-const { Mcp23 } = require('../');
-const { CommonConfig } = require('./common-config.js');
+const { Mcp23, ConfigUtil } = require('../');
 
 class Config {
   static config(path) {
@@ -21,7 +20,7 @@ class Config {
     // console.log('normalizing', json);
     return {
       mqtt: Config.normalizeMqtt(json.mqtt),
-      devices: json.devices.map((d, idx) => CommonConfig.normalizeDevice(d, idx))
+      devices: json.devices.map((d, idx) => ConfigUtil.normalizeDevice(d, idx))
     };
   }
 

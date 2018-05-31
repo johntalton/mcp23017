@@ -1,6 +1,5 @@
 
-
-class CommonConfig {
+class ConfigUtil {
   static normalizeDevice(device, idx) {
     const name = device.name !== undefined ? device.name : idx.toString(10);
     const active = device.active !== undefined ? device.active : true;
@@ -25,14 +24,14 @@ class CommonConfig {
       setProfileOnStart: setPoS,
       validateProfileOnStart: validPoS,
 
-      profile: CommonConfig.normalizeProfile(device.profile),
+      profile: ConfigUtil.normalizeProfile(device.profile),
 
-      names: CommonConfig.normalizeNames(device.names),
+      names: ConfigUtil.normalizeNames(device.names),
 
       setExportsOnStart: setEoS,
       validateExportsOnStart: validEoS,
       adoptExistingExports: adoptE,
-      exports: CommonConfig.normalizeExports(device.exports)
+      exports: ConfigUtil.normalizeExports(device.exports)
     };
   }
 
@@ -90,13 +89,13 @@ class CommonConfig {
       slew: slew,
       hardwareAddress: hwAddr,
 
-      interrupt: CommonConfig.normalizeInterrupt(int)
+      interrupt: ConfigUtil.normalizeInterrupt(int)
     };
   }
 
   static normalizeInterrupt(interrupt) {
     const mirror = interrupt.mirror !== undefined ? interrupt.mirror : false;
-    const [odr, alow] = CommonConfig.normalizeProfileInterruptMode(interrupt.mode);
+    const [odr, alow] = ConfigUtil.normalizeProfileInterruptMode(interrupt.mode);
 
     return {
       mirror: mirror,
@@ -116,4 +115,4 @@ class CommonConfig {
   }
 }
 
-module.exports = { CommonConfig };
+module.exports = { ConfigUtil };

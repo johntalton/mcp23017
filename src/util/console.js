@@ -1,4 +1,4 @@
-const { Util } = require('./common-util.js');
+const { Util } = require('./util.js');
 
 class ConsoleUtil {
   static logProfile(profile) {
@@ -6,11 +6,11 @@ class ConsoleUtil {
   }
 
   static logState(state) {
-    console.log(ConsoleUtil.stateToString(profile));
+    console.log(ConsoleUtil.stateToString(state));
   }
 
   static logGpio(gpio) {
-    console.log(ConsoleUtil.gpioToString(profile));
+    console.log(ConsoleUtil.gpioToString(gpio));
   }
 
 

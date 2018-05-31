@@ -3,65 +3,7 @@
 const rasbus = require('rasbus');
 
 // local imports
-const { Mcp23 } = require('../');
-
-
-  function isDefaultGpio(gpio) { // todo these function have knowledge (move out)
-    if(gpio.direction !== 'in') { return false; }
-    if(gpio.pullup !== false) { return false; }
-    if(gpio.activeLow !== false) { return false; }
-    if(gpio.edge !== 'none') { return false; }
-    return true;
-  }
-
-  function matchGpios(exportGpio, activeGpio) { // todo these function have knowledge (move out)
-    if(exportGpio.direction !== activeGpio.direction) { return [false, 'direction']; }
-    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pullup']; }
-    if(exportGpio.activeLow !== activeGpio.activeLow) { return [false, 'activeLow']; }
-    if(exportGpio.mode !== activeGpio.mode) { return [false, 'mode']; }
-    return [true, ''];
-  }
-
-
-
-class Util {
-  static logProfile(profile) {
-    //console.log(profile);
-    console.log('#');
-    console.log('# Operational Mode', profile.mode);
-    console.log('#  Slew', profile.slew, (profile.slew ? '' : '(slow-mode)'), 'hwAddr', profile.hardwareAddress);
-    console.log('#  Interrupt', profile.interrupt.mirror ? 'mirror' : '', profile.interrupt.mode);
-    console.log('#');
-  }
-
-  static logState(state) {
-    console.log('#');
-    Util.logProfile(state.profile);
-    state.gpios.forEach(Util.logGpio);
-    console.log('#');
-  }
-
-  static logGpio(gpio) {
-    const skipDefaults = true;
-
-    if(skipDefaults && isDefaultGpio(gpio)) { return; }
-
-    if(gpio.direction === 'in') { // todo should we use const here or is string a better interface
-      console.log('# \u21E6 Input Port:', gpio.port, 'Pin:', gpio.pin, 'Edge:', gpio.edge);
-      if(gpio.pendingInterrupt) { console.log('#   \uD83D\uDD14 pending interrupt'); }
-    }
-    else if(gpio.direction === 'out'){
-      console.log('# \u21E8 Ouptput Port:', gpio.port, 'Pin:', gpio.pin);
-    }
-    else { throw Error('unknown direction ' + gpio.direction); }
-
-    console.log('#   active-low', gpio.polarity === 1, 'pull-up', gpio.pullup ? 'enabled 100 k\u2126' : 'disabled');
-    console.log('#');
-  }
-}
-
-
-
+const { Mcp23, Util, ConsoleUtil } = require('../');
 
 class Device {
   static setupWithRetry(config) {
@@ -88,7 +30,7 @@ class Device {
       .then(() => config.client.profile())
       .then(profile => {
         console.log('# Initial Device Profile');
-        Util.logProfile(profile);
+        ConsoleUtil.logProfile(profile);
 
         const [match, why] = Device.configValidateProfile(config, config.profile, profile);
 
@@ -105,15 +47,15 @@ class Device {
             .then(() => {
               if(!pedanticValidation) {
                 console.log('profile after set (no re-read, profile is config)')
-                Util.logProfile(config.profile);
+                ConsoleUtil.logProfile(config.profile);
                 return Promise.resolve();
               }
 
               return config.client.profile().then(profile => {
-                const [match, why] = Device.compairProfiles(config.profile, profile);
+                const [match, why] = Util.compairProfiles(config.profile, profile);
                 if(!match) { throw Error('pedantic validation missmatch: ' + why); }
                 console.log('passed pedantic validation');
-                Util.logProfile(profile);
+                ConsoleUtil.logProfile(profile);
               });
             });
         }
@@ -123,7 +65,7 @@ class Device {
       })
       .then(() => config.client.state())
       .then(state => {
-        Util.logState(state);
+        ConsoleUtil.logState(state);
         const effectiveExports = Device.configValidateExports(config, state)
         return Device.configExports(config, effectiveExports);
       });
@@ -202,30 +144,7 @@ class Device {
       console.log('skipping profile validation');
       return [false, 'skipped'];
     }
-    return Device.compairProfiles(userProfile, activeProfile);
-  }
-
-  static compairProfiles(userProfile, activeProfile) {
-    //console.log('# Validating active device profile');
-    // Util.logProfile(activeProfile);
-
-    // todo less hardcod
-    if(activeProfile.mode !== userProfile.mode) { return [false, 'invalid mode']; }
-    if(activeProfile.hardwareAddress !== userProfile.hardwareAddress) { return [false, 'invalid hardware address']; }
-    if(activeProfile.slew !== userProfile.slew) { return [false, 'invalid slew']; }
-    if(activeProfile.interrupt.mirror !== userProfile.interrupt.mirror) { return [false, 'invalid interrupt mirror']; }
-    if(activeProfile.interrupt.mode !== userProfile.interrupt.mode) { return [false, 'invalid interrupt mode']; }
-
-    return [true, ''];
-  }
-
-  static exportFor(pin, exports) {
-    // find Words // todo
-    // find Bytes // todo
-    // find Bits
-    const bits = exports.find(exp => exp.pin === pin);
-
-    return bits;
+    return Util.compairProfiles(userProfile, activeProfile);
   }
 
 
@@ -242,10 +161,10 @@ class Device {
     // state includes all names, use it to iterate
     state.gpios.forEach(gpio => {
       // do we have an export for this
-      const exp = Device.exportFor(gpio.pin, config.exports);
+      const exp = Util.exportFor(gpio.pin, config.exports);
       if(exp === undefined) {
         // nothing exported
-        if(!isDefaultGpio(gpio)) {
+        if(!Util.isDefaultGpio(gpio)) {
           if(config.adoptExistingExports) {
             // add to effectiveExports
             console.log('chip has configured gpio that is not defined by exports (adopting on update)');
@@ -259,12 +178,12 @@ class Device {
       }
       else {
         // we have a defined export, if not configured, validate it matches
-        if(isDefaultGpio(gpio)) {
+        if(Util.isDefaultGpio(gpio)) {
           console.log('chip has unconfigured gpio, exports defined new (semi-safe to add on update)');
           effective.push(exp);
         }
         else {
-          const [match, why] = matchGpios(gpio, exp);
+          const [match, why] = Util.matchGpios(gpio, exp);
           if(match) {
             console.log('happy day, gpio and export match');
             effective.push(exp);
