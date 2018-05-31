@@ -28,7 +28,7 @@ class Util {
   static logProfile(profile) {
     //console.log(profile);
     console.log('#');
-    console.log('# Operational Mode ', profile.mode);
+    console.log('# Operational Mode', profile.mode);
     console.log('#  Slew', profile.slew, (profile.slew ? '' : '(slow-mode)'), 'hwAddr', profile.hardwareAddress);
     console.log('#  Interrupt', profile.interrupt.mirror ? 'mirror' : '', profile.interrupt.mode);
     console.log('#');
@@ -47,13 +47,8 @@ class Util {
     if(skipDefaults && isDefaultGpio(gpio)) { return; }
 
     if(gpio.direction === 'in') { // todo should we use const here or is string a better interface
-      console.log('# \u21E6 Input Port:', gpio.port, 'Pin:', gpio.pin, '(edge', gpio.edge, 'activeLow', gpio.activeLow + ')');
-      if(gpio.interruptEnabled) {
-        if(gpio.pendingInterrupt) { console.log('#   \uD83D\uDD14 (pending interrupt) \uD83D\uDECE'); }
-      }
-      else {
-        console.log('#   interrupts disabled');
-      }
+      console.log('# \u21E6 Input Port:', gpio.port, 'Pin:', gpio.pin, 'Edge:', gpio.edge);
+      if(gpio.pendingInterrupt) { console.log('#   \uD83D\uDD14 pending interrupt'); }
     }
     else if(gpio.direction === 'out'){
       console.log('# \u21E8 Ouptput Port:', gpio.port, 'Pin:', gpio.pin);

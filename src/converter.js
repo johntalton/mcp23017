@@ -1,5 +1,5 @@
 
-const { BitUtil } = require('and-other-delights');
+const { BitUtil } = require('@johntalton/and-other-delights');
 const Bank = require('./defines.js');
 
 // for `.indexOf` return
@@ -134,6 +134,7 @@ class Converter {
       const [intenabled, intcontrol, defaultval] = Converter.toGpioInterrupt(gpio.edge);
 
       console.log('\tadding pin to state', gpio.pin, pin, direction, gpio.direction);
+      console.log('\t\t', gpio.edge, intenabled, intcontrol, defaultval);
 
       const iodir = Converter.makeUnsetBit(pin, direction);
       const iopol = Converter.makeSetBit(pin, polarity);
@@ -210,13 +211,14 @@ class Converter {
         pullup: pul,
         activeLow: alow,
         pendingInterrupt: pint,
-        edge: Converter.fromGpioInterrupt(inten, defVal, intCtrl),
+        edge: Converter.fromGpioInterrupt(inten, intCtrl, defVal),
         outputLatch: olat
       };
     });
   }
 
   static fromGpioInterrupt(inten, ctrl, dVal) {
+    // console.log('make gpio int from ', inten, ctrl, dVal);
     if(!inten) { return EDGE_NONE; }
     if(!ctrl) { return EDGE_BOTH; }
     return dVal === HIGH ? EDGE_FALLING : EDGE_RISING; // todo correct direction?

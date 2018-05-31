@@ -3,7 +3,7 @@
   "devices": [
     {
       "name": "mcp23-extention",
-      "bus": { "driver": "i2c-bus", "id": [ 42, 32 ] },
+      "bus": { "driver": "i2c-bus", "id": [ 1, 32 ] },
       "active": true,
 
       "resetOnStart": false,
@@ -16,13 +16,13 @@
       "profile": {
         "mutable": false,
 
-        "mode": "16bit-poll",
+        "mode": "dual-blocks",
         "hardwareAddress": true,
         "slew": true,
 
         "interrupt": {
           "mirror": false,
-          "mode": "active-low"
+          "mode": "open-drain"
         }
       },
 
@@ -35,6 +35,7 @@
       "validateExportsOnStart": true,
       "adoptExistingExports": false,
       "exports": [
+        { "nane": "test", "pin": 0, "direction": "in", "edge": "both" },
         { "name": "tcsInterrupt", "pin": "\uD83D\uDECE", "direction": "in", "edge": "rising", "activeLow": false },
         { "name": "\u2600\uFE0F (flash)", "type": "gpio", "pin": 6, "direction": "out" , "pullup": false },
         { "name": "BIsForByte", "type": "port", "_active": false, "port": "BifB", "direction": "in", "_pinOrder": [ 4, 5, 6, 7, 0, 1, 2, 3] }

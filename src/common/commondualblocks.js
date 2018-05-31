@@ -1,5 +1,5 @@
 
-const { BusUtil, BitUtil } = require('and-other-delights');
+const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
 const { REGISTERS_BANK1, PIN_STATE_SIZE } = require('./registers.js');
 

@@ -1,5 +1,5 @@
 {
-  "name": "mcp23017",
+  "name": "@johntalton/mcp23",
   "version": "1.0.0",
   "description": "",
   "main": "src/mcp23.js",
@@ -9,8 +9,8 @@
   "author": "johntalton@gmail.com",
   "license": "MIT",
   "dependencies": {
-    "rasbus": "file:../rasbus",
-    "and-other-delights": "file:../and-other-delights"
+    "rasbus": "johntalton/rasbus",
+    "@johntalton/and-other-delights": "johntalton/and-other-delights"
   },
   "devDependencies": {
     "eslint": "^5.0.0-alpha.3",
@@ -24,6 +24,8 @@
     "eslint-plugin-no-use-extend-native": "^0.3.12",
     "eslint-plugin-promise": "^3.7.0",
     "eslint-plugin-security": "^1.4.0",
-    "eslint-plugin-spellcheck": "0.0.10"
+    "eslint-plugin-spellcheck": "0.0.10",
+    "onoff": "^3.1.0",
+    "@johntalton/tcs34725": "johntalton/tcs34725"
   }
 }

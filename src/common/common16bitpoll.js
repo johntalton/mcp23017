@@ -1,5 +1,5 @@
 
-const { BusUtil, BitUtil } = require('and-other-delights');
+const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
 const PIN_STATE_SIZE = 8;
 

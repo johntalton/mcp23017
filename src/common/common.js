@@ -1,5 +1,5 @@
 
-const { BusUtil, BitUtil } = require('and-other-delights');
+const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
 const Bank = require('../defines.js')
 const { ModeSelection } = require('./modeselection.js');

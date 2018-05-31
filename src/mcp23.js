@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events');
 
-const { BusUtil, BitUtil } = require('and-other-delights');
+const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
 const { Converter } = require('./converter.js');
 const { Common } = require('./common/common.js');
