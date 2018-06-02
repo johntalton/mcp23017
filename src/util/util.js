@@ -9,13 +9,10 @@ class Util {
   }
 
   static compairProfiles(userProfile, activeProfile) {
-    //console.log('# Validating active device profile');
-    // Util.logProfile(activeProfile);
-
     const ap = activeProfile;
     const up = userProfile;
 
-    // todo less hardcod
+    // todo less hard-coded
     if(ap.mode !== up.mode) { return [false, 'invalid mode']; }
     if(ap.hardwareAddress !== up.hardwareAddress) { return [false, 'invalid hardware address']; }
     if(ap.slew !== up.slew) { return [false, 'invalid slew']; }
@@ -27,7 +24,7 @@ class Util {
 
   static matchGpios(exportGpio, activeGpio) { // todo these function have knowledge (move out)
     if(exportGpio.direction !== activeGpio.direction) { return [false, 'direction']; }
-    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pullup']; }
+    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pull-up']; }
     if(exportGpio.activeLow !== activeGpio.activeLow) { return [false, 'activeLow']; }
     if(exportGpio.mode !== activeGpio.mode) { return [false, 'mode']; }
     return [true, ''];
@@ -41,7 +38,6 @@ class Util {
 
     return bits;
   }
-
 }
 
 module.exports = { Util };

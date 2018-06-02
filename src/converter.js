@@ -224,7 +224,9 @@ class Converter {
     return dVal === HIGH ? EDGE_FALLING : EDGE_RISING; // todo correct direction?
   }
 
-  static toIocon(profile, mode) {
+  static toIocon(profile) {
+    const mode = Converter.toIoconMode(profile.mode);
+
     const b = mode.bank;
     const s = mode.sequential ? SEQ_EN : SEQ_DEN;
     const m = profile.interrupt.mirror ? MIR_EN : MIR_DEN;

@@ -10,7 +10,7 @@ const Bank = require('./defines.js');
 const BASE_10 = 10;
 
 /**
- *
+ * Base for bus and options, pinmap resolves here.
  **/
 class Mcp23Base {
   static from(bus, options) {
@@ -19,34 +19,30 @@ class Mcp23Base {
 
   constructor(bus, options) {
     this._bus = bus;
-    this._mode = Common.MODE_MAP_DEFAULT;
     this._pinmap = options.names !== undefined ? options.names : DEFAULT_NAMES;;
   }
 
-  get mode() { return Converter.fromIoconMode(this._mode.bank, this._mode.sequential); }
-  set mode(m) { this._mode = Converter.toIoconMode(m); }
-
-  close() {}
+  close() {
+    // todo
+  }
 
   //
   interruptPortA() {}
   interruptPortB() {}
 
   softwareReset() { return Common.softwareReset(this._bus); }
+
   sniffMode() {
     return Common.sniffMode(this._bus).then(guess => {
       return Converter.fromIoconMode(guess.bank, guess.sequential);
     });
   }
 
-  setProfile(profile) {
-    const newUserMode = (profile.mode !== undefined && profile.mode !== false) ? profile.mode : this._mode;
-    console.log('setProfile', newUserMode);
-    const newMode = Converter.toIoconMode(newUserMode);
-    return Common.setProfile(this._bus, this._mode, Converter.toIocon(profile, newMode))
-      .then(() => {
-        this._mode = newMode;
-      });
+  // note that the mode need to be passed here as the
+  // profile may be trying to switch it etc.
+  setProfile(mode, profile) {
+    console.log('setProfile', mode, profile);
+    return Common.setProfile(this._bus, mode, Converter.toIocon(profile));
   }
 
   //touchProfile() {}
@@ -92,25 +88,68 @@ class Mcp23Base {
   }
 }
 
-class Mcp23SmartMode extends Mcp23Base {
+/**
+ * Adding Cache support for mode.
+ **/
+class Mcp23Cached extends Mcp23Base {
+  constructor() {
+    super();
+    this._mode = Common.MODE_MAP_DEFAULT;
+    // todo _iocon
+  }
 
+  get mode() { return Converter.fromIoconMode(this._mode.bank, this._mode.sequential); }
+  set mode(m) { this._mode = Converter.toIoconMode(m); }
+
+  // wrap setProfile to use cached mode
+  setProfile(profile) {
+    // pick the target mode form out cahced common mode or the profiles
+    const useProfile = (profile.mode !== undefined && profile.mode !== false);
+    const target = {
+      mode: userProfile ? profile.mode : Converter.fromIoconMode(...this._mode),
+      cmode: userProfile ? Converter.toIoconMode(profile.mode) : this._mode
+    };
+
+    // we use our cached mode to write, and then update to the newly
+    //  set profile one it succeds
+    return super.setProfile(this._mode, {
+      ...profile,
+      mode: target.mode
+    })
+    .then(ret => {
+      this._mode = target.cmode;
+      return ret;
+    });
+  }
 }
 
-class Mcp23Cached extends Mcp23SmartMode {
-
+/**
+ * Smart mode provides, if allowed, switching
+ *  Modes specificly to support operations
+ *  that can take advantage of them.
+ * This requires cached / locked iocon/mode
+ *  setup to and switching logic.
+ **/
+class Mcp23SmartMode extends Mcp23Cached {
+  constructor() {
+    super();
+  }
 }
 
 /**
  *
  **/
-class Mcp23 extends Mcp23Cached {
+class Mcp23 extends Mcp23SmartMode {
   constructor(bus, options) {
     super(bus, options);
   }
 
   exportGpio(gpio) {
-    return this.rawState().then(state => {});
-    return Common.exportGpio(this._bus, this._bank, this._sequential, gpio);
+
+  }
+
+  exportGpioFromExisting(gpio) {
+    return new Gpio(gpio);
   }
 
   unexportGpio(gpio) {

@@ -1,8 +1,10 @@
 
+const { ClassSelector } = require('@johntalton/and-other-delights');
+
 /**
  *
  **/
-class ModeSelection {
+class ModeSelection extends ClassSelector {
   static from(bank, sequential) {
     return new ModeSelection({ bank: bank, sequential: sequential });
   }
@@ -15,17 +17,11 @@ class ModeSelection {
   }
 
   constructor(modemap) {
-    this.modemap = modemap;
-    this.result = undefined;
+    super(modemap);
   }
 
   on(modemap, result) {
-    if(ModeSelection.matches(this.modemap, modemap)) { this.result = result; }
-    return this;
-  }
-
-  catch(err) {
-    return this.result !== undefined ? this.result : err;
+    return super.on(inval => ModeSelection.matches(inval, modemap), result);
   }
 }
 
