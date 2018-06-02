@@ -2,6 +2,7 @@ const { EventEmitter } = require('events');
 
 const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
+const { Gpio } = require('./gpio.js');
 const { Converter } = require('./converter.js');
 const { Common } = require('./common/common.js');
 const { DEFAULT_NAMES } = require('./names.js');
@@ -146,11 +147,11 @@ class Mcp23 extends Mcp23SmartMode {
   }
 
   exportGpio(gpio) {
-
+    return Promise.reject(Error('no convieance methods yet'));
   }
 
   exportGpioFromExisting(gpio) {
-    return new Gpio(gpio);
+    return Promise.resolve(new Gpio(gpio.name, this));
   }
 
   unexportGpio(gpio) {
