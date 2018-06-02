@@ -13,13 +13,10 @@ const BASE_10 = 10;
  * Base for bus and options, pinmap resolves here.
  **/
 class Mcp23Base {
-  static from(bus, options) {
-    return Promise.resolve(new Mcp23(bus, options));
-  }
-
   constructor(bus, options) {
+    const opts = options !== undefined ? options : { };
     this._bus = bus;
-    this._pinmap = options.names !== undefined ? options.names : DEFAULT_NAMES;;
+    this._pinmap = opts.names !== undefined ? opts.names : DEFAULT_NAMES;;
   }
 
   close() {
@@ -92,8 +89,8 @@ class Mcp23Base {
  * Adding Cache support for mode.
  **/
 class Mcp23Cached extends Mcp23Base {
-  constructor() {
-    super();
+  constructor(bus, options) {
+    super(bus, options);
     this._mode = Common.MODE_MAP_DEFAULT;
     // todo _iocon
   }
@@ -131,8 +128,8 @@ class Mcp23Cached extends Mcp23Base {
  *  setup to and switching logic.
  **/
 class Mcp23SmartMode extends Mcp23Cached {
-  constructor() {
-    super();
+  constructor(bus, options) {
+    super(bus, options);
   }
 }
 
@@ -140,6 +137,10 @@ class Mcp23SmartMode extends Mcp23Cached {
  *
  **/
 class Mcp23 extends Mcp23SmartMode {
+  static from(bus, options) {
+    return Promise.resolve(new Mcp23(bus, options));
+  }
+
   constructor(bus, options) {
     super(bus, options);
   }
