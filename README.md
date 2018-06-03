@@ -6,13 +6,13 @@ This implmentation sports several feature not found elsewere (js or otherwise). 
 feautre set of the chip.
 
 Such as:
- - Smart Bank 0/1 Sniffing
- - Block addressing (bulk access)
- - Wobble A/B addressing (fast access)
+ - Smart Mode (bank/sequential) Sniffing
+ - Support multiple access modes (`8bit-poll`, `16bit-poll`, `dual-blocks`, `interlaced-block`)
  - Dual / Single and Poll interrupt support
  - Pull-up resistor state access
  - Output and Output Latch access
  - Gpio / Byte / Word interface (with access optimizations)
+ - Burst mode read / write
  - Dynamic Pin naming schemes
  - I2C and SPI generic interface (beta)
  - 8-bit version support (beta - missing proper iocon register setup)
@@ -31,7 +31,7 @@ Create a new instance using `from`
     .catch(e => ...)
 ```
 
-### Interrupts
+### Interrupts (from the chips mcp perspective - aka INTA and INTB handlers)
 
 The library assume external resources for providing interrupt callbacks into the library.  
 
@@ -87,15 +87,15 @@ While the chips defaults to `BANK0` on power-on-reset (aka on power up), and is 
 
 Give this complexity, the chip also offers the `sniffBank` method.
 
-##### Sniff Bank
+##### Sniff Mode
 
-Calling `sniffBank` will attempt to safely access the bus and registers, assuming this may not be a mcp23x17 chip, and/or the `bank` may be set incorrectly.
+Calling `sniffMode` will attempt to safely access the bus and registers, assuming this may not be a mcp23xxx chip, and/or the `bank` \ `sequenatil` may be set incorrectly.
 
 It does this by reading several addressing and probing state to attempt to guess the correct bank.
 
 ```javascript
   ...
-  client.sniffBank().then(guess => {
+  client.sniffMode().then(guess => {
     console.log('smells like bank/sequential', guess);
   })
 ```
