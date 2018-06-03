@@ -53,7 +53,7 @@ class Common {
   }
 
   // cheat method that sidesteps itself by bit manipulation
-  static sniffMode(bus) {
+  static sniffMode(bus, hint) {
     function lowZero(iocon) { return (iocon & 0x01) === 0; }
     function highZero(iocon) { return (iocon >> 7 & 1) === 0; }
     function allIocon(...iocons) {
@@ -64,10 +64,15 @@ class Common {
       }, true);
     }
     function guessIocon(i) {
-      const bank = i >> 7;
+      const bank = (i >> 7) === 1 ? Bank.BANK1 : Bank.BANK0;
       const sequential = ((i & 0x20) >> 5) === 0;
       //console.log('guessing from iocon 0x' + i.toString(16), bank, sequential);
       return { bank, sequential };
+    }
+    function matchCMode(one, two) {
+      if(one.bank !== two.bank) { return false; }
+      if(one.sequential !== two.sequential) { return false; }
+      return true;
     }
 
     const block = [
@@ -116,13 +121,14 @@ class Common {
         const hj = h === j
         const ln = l === n;
 
-        const hl = h === l;
-
         const hLz = lowZero(h);
         const lLz = lowZero(l);
 
         const hHz = highZero(h);
         const lHz = highZero(l);
+
+        const hG = guessIocon(h);
+        const lG = guessIocon(l);
 
         let mib = 0;
         let mdb = 0;
@@ -136,15 +142,17 @@ class Common {
         if(run[0] === 0xFF && run[1] === 0xFF && run[2] == 0x00 && run[3] === 0x00) {
           // initial state bank 0
         }
+        // all 0xFF is init 8bit-poll
+
 
         // must pass to be one of these
         // we do this first as bellow we assume that
         //  when testing (h and l) the tie is already broke
         //  by all equal
-        if(allIocon(h, i, j)) { mib += 5000; }
-        if(allIocon(l, n)) { mdb += 5000; }
-        if(allIocon(h, i, j, k)) { m16p += 5000; }
-        if(allIocon(l, m, n, o)) { m8p += 5000; }
+        if(!allIocon(h, i, j)) { mib -= Infinity; }
+        if(!allIocon(l, n)) { mdb -= Infinity; }
+        if(!allIocon(h, i, j, k)) { m16p -= Infinity; }
+        if(!allIocon(l, m, n, o)) { m8p -= Infinity; }
 
         // if all posible iocon banks are low, then, not bank1
         if(hHz && lHz) { mdb -= Infinity; m8p -= Infinity; }
@@ -161,8 +169,14 @@ class Common {
         // etc, bank1
         if(!ln) { mdb -= Infinity; m8bp -= Infinity; }
 
-        // if 8bit, hi must match
+        // if 8bit, hi must match (read olat twice)
         if(!hi) { m8p -= Infinity; }
+
+        // the guess must match the iocon setting
+        if(!matchCMode(hG, MODE_MAP_INTERLACED_BLOCK)) { mib -= Infinity; }
+        if(!matchCMode(lG, MODE_MAP_DUAL_BLOCKS)) { mdb -= Infinity; }
+        if(!matchCMode(hG, MODE_MAP_16BIT_POLL)) { m16p -= Infinity; }
+        if(!matchCMode(lG, MODE_MAP_8BIT_POLL)) { m8p -= Infinity; }
 
         // undef all currently return 0, so thats a good indicator
         if(o === 0) { mib += 10; }
@@ -170,6 +184,11 @@ class Common {
         if(j === 0 && k === 0) { m8p += 10; }
         if(true) { m16p += 10; } // to be fair
 
+        // hint
+        if(hint !== undefined) {
+          if(matchCMode(hG, hint)) { mib += 1; m16p += 1; }
+          if(matchCMode(lG, hint)) { mdb += 1; m8p += 1; }
+        }
 
         //
         if(m8p === -Infinity && mdb === -Infinity) {
@@ -270,7 +289,7 @@ class Common {
     });
   }
 
-  // set the 
+  // set the entire gpio in one go
   static exportAll(bus, bank, sequential, exports) {
     console.log('common exportall', exports);
     const a = exports.a;
