@@ -1,7 +1,14 @@
 
-// ddata sheet defined register layout for bank0 and bank1
+// data sheet defined register layout for bank0 and bank1
 
+// the total size of all register related to a A or B ports
+// from the perspective of configuration and not state.
+// that is it does not include the INTCAP or GPIO registers
 const PIN_STATE_SIZE = 8;
+
+// when in bank1 the gap between the start of the A register set
+//  and the B register set is this wide. (B1.IODIRB - B1.OLATA)
+const BANK1_AB_GAP_SIZE = 5;
 
 // bank 0 layout
 const REGISTERS_BANK0 = {
@@ -56,6 +63,13 @@ const REGISTERS_BANK1 = {
   OLATB: 0x1A
 };
 
+// helpful shofthand using bank as an index
 const REGISTERS = [REGISTERS_BANK0, REGISTERS_BANK1];
 
-module.exports = { REGISTERS, REGISTERS_BANK1, REGISTERS_BANK0, PIN_STATE_SIZE };
+module.exports = {
+  REGISTERS,
+  REGISTERS_BANK1,
+  REGISTERS_BANK0,
+  PIN_STATE_SIZE,
+  BANK1_AB_GAP_SIZE
+};

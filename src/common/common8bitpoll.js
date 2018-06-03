@@ -1,22 +1,56 @@
 
 const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
-const PIN_STATE_SIZE = 8;
+const { CommonBank1 } = require('./commonbank1.js');
+const { REGISTERS_BANK1, PIN_STATE_SIZE, BANK1_AB_GAP_SIZE } = require('./registers.js');
 
+// read
 const PIN_STATE_8BIT_POLL_READ = [
-  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A,
-  0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A
+  REGISTERS_BANK1.IODIRA,
+  REGISTERS_BANK1.IPOLA,
+  REGISTERS_BANK1.GPINTENA,
+  REGISTERS_BANK1.DEFVALA,
+  REGISTERS_BANK1.INTCONA,
+  REGISTERS_BANK1.IOCON,
+  REGISTERS_BANK1.GPPUA,
+  REGISTERS_BANK1.INTFA,
+  REGISTERS_BANK1.OLATA,
+
+  //
+  REGISTERS_BANK1.IODIRB,
+  REGISTERS_BANK1.IPOLB,
+  REGISTERS_BANK1.GPINTENB,
+  REGISTERS_BANK1.DEFVALB,
+  REGISTERS_BANK1.INTCONB,
+  REGISTERS_BANK1.IOCON_ALT,
+  REGISTERS_BANK1.GPPUB,
+  REGISTERS_BANK1.INTFB,
+  REGISTERS_BANK1.OLATB,
 ];
 
+// write
 const PIN_STATE_8BIT_POLL_WRITE = [
-  0x00, 0x01, 0x02, 0x03, 0x04,  0x06, 0x07,
-  0x10, 0x11, 0x12, 0x13, 0x14,  0x16, 0x17
+  REGISTERS_BANK1.IODIRA,
+  REGISTERS_BANK1.IPOLA,
+  REGISTERS_BANK1.GPINTENA, //todo move to end
+  REGISTERS_BANK1.DEFVALA,
+  REGISTERS_BANK1.INTCONA,
+  REGISTERS_BANK1.GPPUA,
+  REGISTERS_BANK1.OLATA,
+
+  //
+  REGISTERS_BANK1.IODIRB,
+  REGISTERS_BANK1.IPOLB,
+  REGISTERS_BANK1.GPINTENB, // todo move end
+  REGISTERS_BANK1.DEFVALB,
+  REGISTERS_BANK1.INTCONB,
+  REGISTERS_BANK1.GPPUB,
+  REGISTERS_BANK1.OLATB
 ];
 
-class Common8bitPoll {
-  static state(bus) {
-    return BusUtil.readblock(bus, PIN_STATE_8BIT_POLL_READ)
-      .then(buffer => {
+/*
+// hand writen fillmapBlock
+
         if(buffer.length !== 18) { throw Error('buffer length strange: ' + buffer.length); }
         console.log('common8bit buffer', buffer);
 
@@ -24,19 +58,32 @@ class Common8bitPoll {
           buffer.slice(0, PIN_STATE_SIZE),
           Buffer.from(new Array(2).fill(0)),
           buffer.slice(PIN_STATE_SIZE, PIN_STATE_SIZE + 1),
-          Buffer.from(new Array(5).fill(0)),
+          Buffer.from(new Array(BANK1_AB_GAP_SIZE).fill(0)),
           buffer.slice(PIN_STATE_SIZE + 1, -1),
           Buffer.from(new Array(2).fill(0)),
           buffer.slice(-1)
-        ]);
+        ], 27);
       });
+*/
+
+/**
+ *
+ **/
+class Common8bitPoll {
+  static state(bus) {
+    return CommonBank1.state(bus, PIN_STATE_8BIT_POLL_READ);
   }
 
-  static exports() {}
-
   static exportAll(bus, buffer) {
-    if(!Buffer.isBuffer(buffer)) { throw Error('export is not a buffer'); }
-    return BusUtil.writeblock(bus, PIN_STATE_8BIT_POLL_WRITE, buffer);
+    return CommonBank1.exportAll(bus, PIN_STATE_8BIT_POLL_WRITE, buffer);
+  }
+
+  static readPort(bus, register) {
+    return CommonBank1.readPort(bus, register);
+  }
+
+  static readAB(bus, registerA, registerB) {
+    return CommonBank1.readAB(bus, registerA, registerB);
   }
 }
 

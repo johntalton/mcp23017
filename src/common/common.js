@@ -11,66 +11,34 @@ const { Common16bitPoll } = require ('./common16bitpoll.js')
 const { CommonInterlacedBlock } = require ('./commoninterlacedblock.js')
 const { CommonDualBlocks } = require ('./commondualblocks.js')
 
-const BASE_10 = 10;
-
 // theses follow similarly to the ones defined
-// in the converter, but should not be confused
+// in the converter, but should not be confused.
+// can also be called common modes. as they are the
+//  terms in which the `Common` defines the word mode
 // ofocurse they provide similar functionality here.
 const MODE_MAP_8BIT_POLL = { bank: Bank.BANK1, sequential: false };
 const MODE_MAP_16BIT_POLL = { bank: Bank.BANK0, sequential: false };
 const MODE_MAP_DUAL_BLOCKS = { bank: Bank.BANK1, sequential: true };
 const MODE_MAP_INTERLACED_BLOCK = { bank: Bank.BANK0, sequential: true };
 
+// mode defiend by chip as reset mode (exported bellow)
 const MODE_MAP_DEFAULT = MODE_MAP_INTERLACED_BLOCK;
 
-
-// only read non-data bytes (aka, do not cause interupt reset)
-// note, we also exclude OLAT // todo include OLAT
-// todo these hardcodes should alias to above REGISTER[bank].XX values
-const PIN_STATE_SIZE = 8;
-const PIN_STATE_SEQ_BLOCKS = [
-  [[0x00, PIN_STATE_SIZE + PIN_STATE_SIZE], [0x14, 2]], // bank 0 layout (interlaced)
-  [[0x00, PIN_STATE_SIZE], 0x0A, [0x10, PIN_STATE_SIZE], 0x1A] // bank 1 layout (split)
-  // ... above could also be writen [0x0A, PIN_STAET_SIZE + 1] to save *a* command packet
-];
-const PIN_STATE_BYTE_BLOCKS = [
-  [[0x00, 2], [0x02, 2], [0x04, 2], [0x06, 2],
-   [0x08, 2], [0x0A, 2], [0x0C, 2], [0x0E, 2], [0x14, 2]], // bank 0 (wobleAB)
-  [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A,
-   0x10,0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A] // bank 1 (split)
-];
-
-// write without olat or profile
-// read just gpio
-//S
-//B
-
-// write with profile but not olat? odd
-//SwithIocon
-//BwithIocon
-
-// write full state
-//SwithOlat
-//BwithOlat
-
-// good for bulk read all
-//SwithIoconOlat
-//BwithIoconOlat
-
-
-
 /**
- *
+ * Duck type class for common interface, to support modeSelection class.
  **/
 class CommonReject {
   static status() { return Promise.reject(Error('common reject status')); }
   static exportAll() { return Promise.reject(Error('common reject exportAll')); }
+  static readPort() { return Promise.reject(Error('common reject readPort')); }
+  static readAB() { return Promise.reject(Error('common reject readAB')); }
 }
 
 /**
  *
  **/
 class Common {
+  // cheat method that sidesteps itself directly writing reset
   static softwareReset(bus) {
     console.log(' ** attempting software reset (zero bytes) ** ');
     return Promise.all((new Array(30).fill(0))
@@ -84,6 +52,7 @@ class Common {
       .then(() => bus.write(0, [0xFF, 0xFF])) // iodirA
   }
 
+  // cheat method that sidesteps itself by bit manipulation
   static sniffMode(bus) {
     function lowZero(iocon) { return (iocon & 0x01) === 0; }
     function highZero(iocon) { return (iocon >> 7 & 1) === 0; }
@@ -93,6 +62,12 @@ class Common {
       return iocons.every(iocon => {
         return first === iocon;
       }, true);
+    }
+    function guessIocon(i) {
+      const bank = i >> 7;
+      const sequential = ((i & 0x20) >> 5) === 0;
+      //console.log('guessing from iocon 0x' + i.toString(16), bank, sequential);
+      return { bank, sequential };
     }
 
     const block = [
@@ -131,6 +106,8 @@ class Common {
         // 16bit        0/f: [iocon iocona] [iocona iocon] [gpiniteB gpintenA] [olatB olatA]
         // 8bit         1/f: [olatA olatA]  [undef undef]  [iocon iocon]       [iocona iocona]
 
+        // given this: it is posible to rule out some mode (bank / sequential) configuratoins
+
         const hi = h === i;
         const jk = j === k;
         const lm = l === m;
@@ -152,12 +129,27 @@ class Common {
         let m16p = 0;
         let m8p = 0;
 
-        if(h === 0) {}
+        if(h === 0) {} // not helpfull (low confidence / initial state though)
+        if(run[0] === 0xFF && run[1] === 0x00 && run[2] == 0x00 && run[3] === 0x00) {
+          // initial state bank 1
+        }
+        if(run[0] === 0xFF && run[1] === 0xFF && run[2] == 0x00 && run[3] === 0x00) {
+          // initial state bank 0
+        }
+
+        // must pass to be one of these
+        // we do this first as bellow we assume that
+        //  when testing (h and l) the tie is already broke
+        //  by all equal
+        if(allIocon(h, i, j)) { mib += 5000; }
+        if(allIocon(l, n)) { mdb += 5000; }
+        if(allIocon(h, i, j, k)) { m16p += 5000; }
+        if(allIocon(l, m, n, o)) { m8p += 5000; }
 
         // if all posible iocon banks are low, then, not bank1
         if(hHz && lHz) { mdb -= Infinity; m8p -= Infinity; }
         // etc, not bank0
-        if(!hHz && !lHz) { mib -= Infinity; m16 -= Infinity; }
+        if(!hHz && !lHz) { mib -= Infinity; m16p -= Infinity; }
 
         // if h high reserved low bit, cannot be iocon for bank0
         if(!hLz) { mib -= Infinity; m16p -= Infinity; }
@@ -172,59 +164,28 @@ class Common {
         // if 8bit, hi must match
         if(!hi) { m8p -= Infinity; }
 
-        // must pass to be one of these
-        if(allIocon(h, i, j)) { mib += 5000; }
-        if(allIocon(l, n)) { mdb += 5000; }
-        if(allIocon(h, i, j, k)) { m16p += 5000; }
-        if(allIocon(l, m, n, o)) { m8p += 5000; }
-
         // undef all currently return 0, so thats a good indicator
         if(o === 0) { mib += 10; }
         if(i === 0 && j === 0 && k === 0) { mdb += 10; }
         if(j === 0 && k === 0) { m8p += 10; }
-
-/*
-        // good signals but can be wrong
-        // mib
-        if(!lz) { mib += 1; }
-        if(!hl) { mib += 1; }
-        if(!jk) { mib += 1; }
-        if(!ln) { mib += 1; }
-        if(o === 0) { mib += 2; }
-        // mdb
-        if(!hz) { mdb += 1; }
-        if(!hi) { mdb += 1; }
-        if(!lm) { mdb += 1; }
-        if(!no) { mdb += 1; }
-        if(!hl) { mdb += 1; }
-        if(jk && j === 0) { mdb += 2; }
-        // m16p
-        if(!lz) { m16p += 1; }
-        if(!hl) { m16p += 1; }
-        if(!lm) { m16p += 1; }
-        if(!no) { m16p += 1; }
-        if(!ln) { m16p += 1; }
-        // m8p
-        if(!hz) { m8p += 1 };
-        if(!hl) { m8p += 1; }
-        if(jk && j === 0) { m8p += 2 }
-
-        // some strikes against
-        // mib
-        if(jk) { mib -= 2; }
-        if(lm) { mib -= 2; }
-        if(no) { mib -= 2; }
-        // mdb
-        if(hi) { mdb -= 2; }
-        if(lm) { mdb -= 2; }
-        if(no) { mdb -= 2; }
-        // m16p
-        if(lm) { m16p -= 3; }
-        if(no) { m16p -= 3; }
-*/
+        if(true) { m16p += 10; } // to be fair
 
 
+        //
+        if(m8p === -Infinity && mdb === -Infinity) {
+          // bank 0
+          const guess = guessIocon(h);
+          console.log('struck gold (fools) BANK 0, h is iocon 0x' + h.toString(16), guess);
+          return guess;
+        }
+        else if(m16p === -Infinity && mib === -Infinity) {
+          // bank 1
+          const guess = guessIocon(l);
+          console.log('struck gold (fools) BANK 1, l is iocon 0x' + l.toString(16), guess);
+          return guess;
+        }
 
+        //
         console.log(mib, mdb, m16p, m8p);
         const guess = [[mib, MODE_MAP_INTERLACED_BLOCK],
          [mdb, MODE_MAP_DUAL_BLOCKS],
@@ -242,17 +203,57 @@ class Common {
       });
   }
 
+  // cheat method that sidesteps itself by direct lookup and read
   static profile(bus, mode) {
     console.log('profile', mode);
+    // we skip the modeSelection here for simplicity
     return bus.read(REGISTERS[mode.bank].IOCON)
       .then(buf => buf.readUInt8(0));
   }
 
+  // cheat method that sidesteps itself by direct lookup and write
   static setProfile(bus, mode, iocon) {
     console.log('setProfile', mode, iocon.toString(2));
+    // we skipt the modeSelection here form simplicity
     return bus.write(REGISTERS[mode.bank].IOCON, iocon);
   }
 
+  // helper to read and name memmapped buffer
+  static statusMemmapToNamedBytes(buf, mode) {
+    const iocon = buf.readUInt8(REGISTERS[mode.bank].IOCON)
+    const ioconAlt = buf.readUInt8(REGISTERS[mode.bank].IOCON_ALT)
+    if(iocon !== ioconAlt) { throw Error('iocon missmatch: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+
+    const a = {
+      iodir: buf.readUInt8(REGISTERS[mode.bank].IODIRA),
+      iopol: buf.readUInt8(REGISTERS[mode.bank].IPOLA),
+      gpinten: buf.readUInt8(REGISTERS[mode.bank].GPINTENA),
+      defval: buf.readUInt8(REGISTERS[mode.bank].DEFVALA),
+      intcon: buf.readUInt8(REGISTERS[mode.bank].INTCONA),
+      gppu: buf.readUInt8(REGISTERS[mode.bank].GPPUA),
+      intf: buf.readUInt8(REGISTERS[mode.bank].INTFA),
+      olat: buf.readUInt8(REGISTERS[mode.bank].OLATA)
+    };
+
+    const b = {
+      iodir: buf.readUInt8(REGISTERS[mode.bank].IODIRB),
+      iopol: buf.readUInt8(REGISTERS[mode.bank].IPOLB),
+      gpinten: buf.readUInt8(REGISTERS[mode.bank].GPINTENB),
+      defval: buf.readUInt8(REGISTERS[mode.bank].DEFVALB),
+      intcon: buf.readUInt8(REGISTERS[mode.bank].INTCONB),
+      gppu: buf.readUInt8(REGISTERS[mode.bank].GPPUB),
+      intf: buf.readUInt8(REGISTERS[mode.bank].INTFB),
+      olat: buf.readUInt8(REGISTERS[mode.bank].OLATB)
+    };
+
+    // console.log(iocon, a, b)
+    return {
+      iocon: iocon,
+      a: a, b: b
+    };
+  }
+
+  // retrived the sate (ios and profile) in one go
   static state(bus, mode) {
     return ModeSelection.from(mode.bank, mode.sequential)
       .on(MODE_MAP_8BIT_POLL, Common8bitPoll)
@@ -264,41 +265,12 @@ class Common {
         console.log('state read from bank', mode.bank);
         console.log(buf);
 
-        const iocon = buf.readUInt8(REGISTERS[mode.bank].IOCON)
-        const ioconAlt = buf.readUInt8(REGISTERS[mode.bank].IOCON_ALT)
-        if(iocon !== ioconAlt) { throw Error('iocon missmatch: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+        return Common.statusMemmapToNamedBytes(buf, mode);
         // todo also test profile against bank/seq used to read to validate
-
-        const a = {
-          iodir: buf.readUInt8(REGISTERS[mode.bank].IODIRA),
-          iopol: buf.readUInt8(REGISTERS[mode.bank].IPOLA),
-          gpinten: buf.readUInt8(REGISTERS[mode.bank].GPINTENA),
-          defval: buf.readUInt8(REGISTERS[mode.bank].DEFVALA),
-          intcon: buf.readUInt8(REGISTERS[mode.bank].INTCONA),
-          gppu: buf.readUInt8(REGISTERS[mode.bank].GPPUA),
-          intf: buf.readUInt8(REGISTERS[mode.bank].INTFA),
-          olat: buf.readUInt8(REGISTERS[mode.bank].OLATA)
-        };
-
-        const b = {
-          iodir: buf.readUInt8(REGISTERS[mode.bank].IODIRB),
-          iopol: buf.readUInt8(REGISTERS[mode.bank].IPOLB),
-          gpinten: buf.readUInt8(REGISTERS[mode.bank].GPINTENB),
-          defval: buf.readUInt8(REGISTERS[mode.bank].DEFVALB),
-          intcon: buf.readUInt8(REGISTERS[mode.bank].INTCONB),
-          gppu: buf.readUInt8(REGISTERS[mode.bank].GPPUB),
-          intf: buf.readUInt8(REGISTERS[mode.bank].INTFB),
-          olat: buf.readUInt8(REGISTERS[mode.bank].OLATB)
-        };
-
-        // console.log(iocon, a, b)
-        return {
-          iocon: iocon,
-          a: a, b: b
-        };
     });
   }
 
+  // set the 
   static exportAll(bus, bank, sequential, exports) {
     console.log('common exportall', exports);
     const a = exports.a;
@@ -344,15 +316,58 @@ class Common {
       .exportAll(bus, buffer);
   }
 
+  // read single register
+  static readPort(bus, mode, register) {
+    return ModeSelection.form(mode.bank, mode.sequential)
+      .on(MODE_MAP_8BIT_POLL, Common8bitPoll)
+      .on(MODE_MAP_16BIT_POLL, Common16bitPoll)
+      .on(MODE_MAP_DUAL_BLOCKS, CommonDualBlocks)
+      .on(MODE_MAP_INTERLACED_BLOCK, CommonInterlacedBlock)
+      .catch(CommonReject)
+      .readPort(bus, register)
+      .then(buf => buf.readUInt8(0));
+  }
 
-  static readInterrupts() { } // return [pin, value]
+  // read dual register (16bit mode if possible)
+  static readAB(bus, mode, registerA, registerB) {
+    return ModeSelection.form(mode.bank, mode.sequential)
+      .on(MODE_MAP_8BIT_POLL, Common8bitPoll)
+      .on(MODE_MAP_16BIT_POLL, Common16bitPoll)
+      .on(MODE_MAP_DUAL_BLOCKS, CommonDualBlocks)
+      .on(MODE_MAP_INTERLACED_BLOCK, CommonInterlacedBlock)
+      .catch(CommonReject)
+      .readAB(bus, registerA, registerB)
+      .then(buf = ({
+        A: buf.readUInt8(0),
+        B: buf.readUInt8(1)
+      }));
+  }
 
-  static read(controller, pin) {}
-  static write(controller, pin, value) {}
+  // read (alias methods for register names)
+  static readIntfA(bus, mode) { return Common.readPort(bus, mode, REGISTERS[mode.bank].INTFA); }
+  readIntfB() { return Common.readPort(bus, mode, REGISTERS[mode.bank].INTFB); }
+  readIntfAB() { return Common.readAB(bus, mode, REGISTERS[mode.bank].INTFA, REGISTERS[mode.bank].INTFB); }
 
-  static readPort(controller, port) {}
-  static writePort(controller, port, value) {}
-  static wrtiePortLatch(controller, port, value) {}
+  readGpioA() { return Common.readPort(bus, mode, REGISTERS[mode.bank].GPIOA); }
+  readGpioB() { return Common.readPort(bus, mode, REGISTERS[mode.bank].GPIOB); }
+  readGpioAB() { return Common.readAB(bus, mode, REGISTERS[mode.bank].GPIOA, REGISTERS[mode.bank].GPIOB); }
+
+  readIntcapA() { return Common.readPort(bus, mode, REGISTERS[mode.bank].INTCAPA); }
+  readIntcapB() { return Common.readPort(bus, mode, REGISTERS[mode.bank].INTCAPB); }
+  readIntcapAB() { return Common.readAB(bus, mode, REGISTERS[mode.bank].INTCAPA, REGISTERS[mode.bank].INTCAPB); }
+
+  readOlatA() { return Common.readPort(bus, mode, REGISTERS[mode.bank].OLATA); }
+  readOlabB() { return Common.readPort(bus, mode, REGISTERS[mode.bank].OLATB); }
+  readOlabAB() { return Common.readAB(bus, mode, REGISTERS[mode.bank].OLATA, REGISTERS[mode.bank].OLATB); }
+
+  // write (alias methods for register names)
+  writeGpioA() { }
+  writeGpioB() { }
+  writeGpioAB() { }
+
+  writeOlatA() { }
+  writeOlatB() { }
+  writeOlatAB() { }
 }
 
 Common.MODE_MAP_DEFAULT = MODE_MAP_DEFAULT;

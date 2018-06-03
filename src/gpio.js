@@ -5,6 +5,7 @@ const { EventEmitter } = require('events');
  **/
 class Gpio extends EventEmitter {
   constructor(pin, controller) {
+    super();
     this.pin = pin;
     this.controller = controller;
   }
@@ -21,7 +22,7 @@ class Gpio extends EventEmitter {
   read() { return Common.read(this.controller, this.pin); }
   write(value) { return Common.write(this.controller, this.pin, value); }
 
-  watch(cb) { return Promise.reject(); }
+  watch(cb) { this.controller.watch(this.pin, cb); }
   unwatch(cb) { return Promise.reject(); }
 
   readTransaction() { return Promise.reject(); }

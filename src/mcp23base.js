@@ -46,8 +46,8 @@ class Mcp23Base {
   //touchProfile() {}
   //wasProfileTouched() {}
 
-  profile() {
-    return Common.profile(this._bus, this._mode)
+  profile(mode) {
+    return Common.profile(this._bus, mode)
       .then(iocon => { console.log('iocon', BitUtil.unpackbits(BitUtil.TRUE_8_PACKMAP, iocon));  return iocon; })
       .then(Converter.fromIocon)
       .then(profile => {
@@ -57,8 +57,8 @@ class Mcp23Base {
       });
   }
 
-  state() {
-    return Common.state(this._bus, this._mode)
+  state(mode) {
+    return Common.state(this._bus, mode)
       .then(state => {
         const profile = Converter.fromIocon(state.iocon);
         if(profile.bank !== this._bank) {
@@ -75,14 +75,10 @@ class Mcp23Base {
       });
   }
 
-  exportAll(gpios) {
+  exportAll(mode, gpios) {
     const state = Converter.toState(gpios, this._pinmap);
-    return Common.exportAll(this._bus, this._bank, this._sequential, state);
+    return Common.exportAll(this._bus, mode.bank, mode.sequential, state); // todo pass cmode
 //      .then(Mcp23.exportsToObjects(exports));
-  }
-
-  unexportAll(exports) {
-    return Common.unexportAll(this._bus, this._bank, this._sequential, exports);
   }
 }
 
@@ -102,7 +98,7 @@ class Mcp23Cached extends Mcp23Base {
   // wrap setProfile to use cached mode
   setProfile(profile) {
     // pick the target mode form out cahced common mode or the profiles
-    const useProfile = (profile.mode !== undefined && profile.mode !== false);
+    const userProfile = (profile.mode !== undefined && profile.mode !== false);
     const target = {
       mode: userProfile ? profile.mode : Converter.fromIoconMode(...this._mode),
       cmode: userProfile ? Converter.toIoconMode(profile.mode) : this._mode
@@ -118,6 +114,19 @@ class Mcp23Cached extends Mcp23Base {
       this._mode = target.cmode;
       return ret;
     });
+  }
+
+  profile() {
+    // console.log('using cached mode for profile read', this._mode);
+    return super.profile(this._mode);
+  }
+
+  state(mode) {
+    return super.state(this._mode);
+  }
+
+  exportAll(mode, gpios) {
+    return super.exportAll(this._mode, gpios);
   }
 }
 

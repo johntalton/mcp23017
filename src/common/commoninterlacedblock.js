@@ -1,6 +1,7 @@
 
 const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
 
+const { CommonBank0 } = require('./commonbank0.js');
 const { REGISTERS_BANK0, PIN_STATE_SIZE } = require('./registers.js');
 
 // bank 0 layout (interlaced)
@@ -8,14 +9,16 @@ const { REGISTERS_BANK0, PIN_STATE_SIZE } = require('./registers.js');
 const FIRST_BLOCK = REGISTERS_BANK0.IODIRA;
 const SECOND_OLAT = REGISTERS_BANK0.OLATA;
 
-const OLAT_SIZE = 2;
+const FIRST_BLOCK_SIZE = 16;
+const SECOND_OLAT_SIZE = 2;
 
 const PIN_STATE_INTERLACED_BLOCK_READ = [
-  [FIRST_BLOCK, PIN_STATE_SIZE + PIN_STATE_SIZE],
-  [SECOND_OLAT, OLAT_SIZE]
+  [FIRST_BLOCK, FIRST_BLOCK_SIZE],
+  [SECOND_OLAT, SECOND_OLAT_SIZE]
 ];
 
 // write
+// todo move gpintenAB to end
 const PART_ONE_START = REGISTERS_BANK0.IODIRA;
 const PART_TWO_START = REGISTERS_BANK0.GPPUA;
 const PART_THREE_START = REGISTERS_BANK0.OLATA;
@@ -30,23 +33,39 @@ const PIN_STATE_INTERLACED_BLOCK_WRITE = [
   [PART_THREE_START, PART_THREE_SIZE]
 ];
 
-class CommonInterlacedBlock {
-  static state(bus) {
-    return  BusUtil.readblock(bus, PIN_STATE_INTERLACED_BLOCK_READ)
-      .then(buffer => {
+
+/*
+
+// hand writen version of fillmapBank
         if(buffer.length !== 18) { throw Error('buffer length strange: ' + buffer.length); }
         return Buffer.concat([
-          buffer.slice(0, -2),
+          buffer.slice(0, -SECOND_OLAT_SIZE),
           Buffer.from(new Array(4).fill(0)),
-          buffer.slice(-2)
-        ]);
+          buffer.slice(-SECOND_OLAT_SIZE)
+        ], 22);
       });
+
+*/
+
+/**
+ *
+ **/
+class CommonInterlacedBlock {
+  static state(bus) {
+    return  CommonBank0.state(bus, PIN_STATE_INTERLACED_BLOCK_READ);
   }
 
   static exportAll(bus, buffer) {
-    //console.log('exportall', PIN_STATE_INTERLACED_BLOCK_WRITE, buffer);
-    if(!Buffer.isBuffer(buffer)) { throw Error('export is not a buffer'); }
-    return BusUtil.writeblock(bus, PIN_STATE_INTERLACED_BLOCK_WRITE, buffer);  }
+    return CommonBank0.exportAll(bus, PIN_STATE_INTERLACED_BLOCK_WRITE, buffer);
+  }
+
+  static readPort(bus, register) {
+    return CommonBank0.readPort(bus, register);
+  }
+
+  static readAB(bus, registerA, registerB) {
+    return CommonBank0.readAB(bus, registerA, registerB);
+  }
 }
 
 module.exports = { CommonInterlacedBlock };
