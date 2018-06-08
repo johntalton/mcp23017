@@ -2,15 +2,15 @@ const { Util } = require('./util.js');
 
 class ConsoleUtil {
   static logProfile(profile) {
-    console.log(ConsoleUtil.profileToString(profile));
+    return console.log(ConsoleUtil.profileToString(profile));
   }
 
   static logState(state) {
-    console.log(ConsoleUtil.stateToString(state));
+    return console.log(ConsoleUtil.stateToString(state));
   }
 
   static logGpio(gpio) {
-    console.log(ConsoleUtil.gpioToString(gpio));
+    return console.log(ConsoleUtil.gpioToString(gpio));
   }
 
 
@@ -39,8 +39,8 @@ class ConsoleUtil {
       lines.push('\u21E6 Input Port: ' + gpio.port + ' Pin: ' + gpio.pin + ' Edge: ' + gpio.edge);
       if(gpio.pendingInterrupt) { lines.push('  \uD83D\uDD14 pending interrupt'); }
     }
-    else if(gpio.direction === 'out'){
-      lines.push('\u21E8 Ouptput Port: ' + gpio.port + ' Pin: ' + gpio.pin);
+    else if(gpio.direction === 'out') {
+      lines.push('\u21E8 Output Port: ' + gpio.port + ' Pin: ' + gpio.pin);
     }
     else { throw Error('unknown direction ' + gpio.direction); }
 

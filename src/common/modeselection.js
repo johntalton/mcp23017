@@ -1,27 +1,17 @@
 
 const { ClassSelector } = require('@johntalton/and-other-delights');
+const { CommonMode } = require('../defines.js');
 
 /**
- *
+ * Withing this context `mode` refers to the common mode bank / seq object.
  **/
 class ModeSelection extends ClassSelector {
-  static from(bank, sequential) {
-    return new ModeSelection({ bank: bank, sequential: sequential });
-  }
-
-  static matches(mm1, mm2) {
-    if(mm1.bank !== mm2.bank) { return false; }
-    if(mm1.sequential !== mm2.sequential) { return false; }
-
-    return true;
-  }
-
-  constructor(modemap) {
-    super(modemap);
+  static from(mode) {
+    return new ModeSelection(mode);
   }
 
   on(modemap, result) {
-    return super.on(inval => ModeSelection.matches(inval, modemap), result);
+    return super.on(inval => CommonMode.match(inval, modemap), result);
   }
 }
 

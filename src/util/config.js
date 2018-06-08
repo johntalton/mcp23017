@@ -4,7 +4,7 @@ class ConfigUtil {
     const name = device.name !== undefined ? device.name : idx.toString(10);
     const active = device.active !== undefined ? device.active : true;
 
-    const resetOS = device.resetOnStart !== undefined ? device.resetOnStart : false; // done not clober anything, safe
+    const resetOS = device.resetOnStart !== undefined ? device.resetOnStart : false; // done not clobber anything, safe
     const sniffMode = device.sniffMode !== undefined ? device.sniffMode : true;
     const setPoS = device.setProfileOnStart !== undefined ? device.setProfileOnStart : true;
     const validPoS = device.validateProfileOnStart !== undefined ? device.validateProfileOnStart : true;
@@ -40,16 +40,15 @@ class ConfigUtil {
       const name = exp.name !== undefined ? exp.name : index;
       const type = exp.type !== undefined ? exp.type : 'gpio';
       const active = exp.active !== undefined ? exp.active : true;
-      const pin = exp.pin;
-      const port = exp.port;
+      const { pin, port } = exp;
 
       if(type === 'gpio' && pin === undefined) { throw Error('gpio must specify pin'); }
-      if(type === 'port' && port === undefined) { throw Error('port must specify ... uh, port')}
+      if(type === 'port' && port === undefined) { throw Error('port must specify ... uh, port'); }
 
-      const dir = exp.direction !== undefined ? exp.direction : 'out'; // todo default_directyion
+      const dir = exp.direction !== undefined ? exp.direction : 'out'; // todo default_direction
       const edge = exp.edge !== undefined ? exp.edge : 'none'; // todo default_edge
       const activeLow = exp.activeLow !== undefined ? exp.activeLow : false; // default_activeLow
-      const pullup = exp.pullup !== undefined ? exp.pullup : false; // todo default_pullup
+      const pullUp = exp.pullup !== undefined ? exp.pullUp : false; // todo default_pullUp
 
       const pinOrder = exp.pinOrder !== undefined ? exp.pinOrder : [];
 
@@ -64,7 +63,7 @@ class ConfigUtil {
         direction: dir,
         edge: edge,
         activeLow: activeLow,
-        pullup: pullup,
+        pullup: pullUp,
 
         pinOrder: pinOrder
       };
@@ -106,12 +105,22 @@ class ConfigUtil {
   }
 
   static normalizeProfileInterruptMode(mode) {
-    if(mode === undefined) { return [false, true]; } // default to active-low
-    if(mode.toLowerCase() === 'open-drain') { return [true, false]; }
-    if(mode.toLowerCase() === 'active-low') { return [false, true]; }
-    if(mode.toLowerCase() === 'active-high') { return [false, false]; }
+    const ODR_ALOW_OPEN_DRAIN = [true, false];
+    const ODR_ALOW_ACTIVE_LOW = [false, true];
+    const ODR_ALOW_ACTIVE_HIGH = [false, false];
+    const ODR_ALOW_DEFAULT = ODR_ALOW_OPEN_DRAIN; // todo this is not the chips default
 
-    throw Error('unknonw interrupt mode: ' + mode);
+    if(mode === undefined) { return ODR_ALOW_DEFAULT; }
+
+    const intModeOdrAlowMap = [ // todo keys should be const values
+      { key: 'open-drain', odrAlow: ODR_ALOW_OPEN_DRAIN },
+      { key: 'active-low', odrAlow: ODR_ALOW_ACTIVE_LOW },
+      { key: 'active-high', odrAlow: ODR_ALOW_ACTIVE_HIGH }
+    ];
+
+    const item = intModeOdrAlowMap.find(kvp => kvp.key === mode);
+    if(item === undefined) { throw Error('unknown mode: ' + mode); }
+    return item.odrAlow;
   }
 }
 

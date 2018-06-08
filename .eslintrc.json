@@ -150,7 +150,7 @@
     "comma-dangle": ["error", "never"],
     "block-spacing": ["error", "always"],
     "object-curly-spacing": ["error", "always"],
-    "brace-style": ["error", "1tbs", { "allowSingleLine": true }],
+    "brace-style": ["error", "stroustrup", { "allowSingleLine": true }],
     "keyword-spacing": ["error", {
       "overrides": {
         "if": { "after": false },
@@ -191,8 +191,8 @@
     "import/no-extraneous-dependencies": "error",
     "import/no-mutable-exports": "error",
 
-    "import/unambiguous": "error",
-    "import/no-commonjs": "error",
+    "import/unambiguous": "warn",
+    "import/no-commonjs": "warn",
     "import/no-amd": "error",
     "import/no-nodejs-modules": "error",
 
@@ -217,7 +217,7 @@
     "promise/no-return-wrap": "error",
     "promise/param-names": "error",
     "promise/always-return": "error",
-    "promise/no-native": "error",
+    "promise/no-native": "warn",
     "promise/no-nesting": "error",
     "promise/no-promise-in-callback": "error",
     "promise/no-callback-in-promise": "error",
@@ -225,7 +225,7 @@
     "promise/no-new-statics": "error",
     "promise/no-return-in-finally": "error",
     "promise/valid-params": "error",
-    "promise/prefer-await-to-then": "error",
+    "promise/prefer-await-to-then": "warn",
     "promise/prefer-await-to-callbacks": "error",
 
 
@@ -240,19 +240,19 @@
     "fp/no-arguments": "error",
     "fp/no-class": "warn",
     "fp/no-delete": "error",
-    "fp/no-events": "error",
+    "fp/no-events": "warn",
     "fp/no-get-set": "error",
     "fp/no-let": "error",
     "fp/no-loops": "error",
     "fp/no-mutating-assign": "error",
     "fp/no-mutating-methods": "error",
-    "fp/no-mutation": ["error", { "commonjs": true, "withThis": true }],
-    "fp/no-nil": "error",
+    "fp/no-mutation": ["warn", { "commonjs": true, "withThis": true }],
+    "fp/no-nil": "warn",
     "fp/no-proxy": "error",
     "fp/no-rest-parameters": "error",
     "fp/no-this": "warn",
-    "fp/no-throw": "error",
-    "fp/no-unused-expression": "error",
+    "fp/no-throw": "warn",
+    "fp/no-unused-expression": "warn",
     "fp/no-valueof-field": "error",
     "no-var": "error",
 
@@ -282,9 +282,14 @@
       "identifiers": false,
       "minLength": 3,
       "skipWords": [
-        "todo", "const",
-        "rasbus", "mcp23", "mcp23017",
-        "gpio", "iocon"
+        "johntalton",
+        "todo", "const", "eslint", "bitwise",
+        "rasbus", "mcp23", "mcp23017", "Mcp23",
+        "mcp23gpio", "mcp23base",
+        "util", "common8bitpoll", "common16bitpoll", "commoninterlacedblock", "commondualblocks",
+        "commonbank0", "commonbank1", "modeselection", "commondirect",
+        "gpio", "iocon", "ioconA", "iodir", "gppu", "defval", "olat", "gpinten",
+        "unwatch", "undef"
       ]
     }]
   }

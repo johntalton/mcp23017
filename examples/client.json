@@ -16,7 +16,7 @@
       "profile": {
         "mutable": false,
 
-        "mode": "dual-blocks",
+        "mode": "8bit-poll",
         "hardwareAddress": true,
         "slew": true,
 

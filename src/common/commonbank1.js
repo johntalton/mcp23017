@@ -1,6 +1,4 @@
-const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
-
-const { REGISTERS_BANK1 } = require('./registers.js');
+const { BusUtil } = require('@johntalton/and-other-delights');
 
 /**
  *
@@ -17,6 +15,7 @@ class CommonBank1 {
   }
 
   static readPort(bus, register) {
+    // console.log('reading from register 0x' + register.toString(16));
     return bus.read(register);
   }
 
@@ -26,12 +25,11 @@ class CommonBank1 {
       bus.read(registerB)
     ]);
   }
+
+  static writePort(bus, register, value) {
+    // console.log('writing to register 0x' + register.toString(16), value);
+    return bus.write(register, value);
+  }
 }
 
 module.exports = { CommonBank1 };
-
-
-
-
-
-

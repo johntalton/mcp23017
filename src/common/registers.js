@@ -34,7 +34,7 @@ const REGISTERS_BANK0 = {
   GPIOB: 0x13,
   OLATA: 0x14,
   OLATB: 0x15
-}
+};
 
 // bank 1 layout
 const REGISTERS_BANK1 = {
@@ -63,7 +63,7 @@ const REGISTERS_BANK1 = {
   OLATB: 0x1A
 };
 
-// helpful shofthand using bank as an index
+// helpful short hand using bank as an index
 const REGISTERS = [REGISTERS_BANK0, REGISTERS_BANK1];
 
 module.exports = {

@@ -1,8 +1,5 @@
-
-const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
-
 const { CommonBank1 } = require('./commonbank1.js');
-const { REGISTERS_BANK1, PIN_STATE_SIZE, BANK1_AB_GAP_SIZE } = require('./registers.js');
+const { REGISTERS_BANK1 } = require('./registers.js');
 
 // read
 const PIN_STATE_8BIT_POLL_READ = [
@@ -25,14 +22,14 @@ const PIN_STATE_8BIT_POLL_READ = [
   REGISTERS_BANK1.IOCON_ALT,
   REGISTERS_BANK1.GPPUB,
   REGISTERS_BANK1.INTFB,
-  REGISTERS_BANK1.OLATB,
+  REGISTERS_BANK1.OLATB
 ];
 
 // write
 const PIN_STATE_8BIT_POLL_WRITE = [
   REGISTERS_BANK1.IODIRA,
   REGISTERS_BANK1.IPOLA,
-  REGISTERS_BANK1.GPINTENA, //todo move to end
+  REGISTERS_BANK1.GPINTENA, // todo move to end
   REGISTERS_BANK1.DEFVALA,
   REGISTERS_BANK1.INTCONA,
   REGISTERS_BANK1.GPPUA,
@@ -47,24 +44,6 @@ const PIN_STATE_8BIT_POLL_WRITE = [
   REGISTERS_BANK1.GPPUB,
   REGISTERS_BANK1.OLATB
 ];
-
-/*
-// hand writen fillmapBlock
-
-        if(buffer.length !== 18) { throw Error('buffer length strange: ' + buffer.length); }
-        console.log('common8bit buffer', buffer);
-
-        return Buffer.concat([
-          buffer.slice(0, PIN_STATE_SIZE),
-          Buffer.from(new Array(2).fill(0)),
-          buffer.slice(PIN_STATE_SIZE, PIN_STATE_SIZE + 1),
-          Buffer.from(new Array(BANK1_AB_GAP_SIZE).fill(0)),
-          buffer.slice(PIN_STATE_SIZE + 1, -1),
-          Buffer.from(new Array(2).fill(0)),
-          buffer.slice(-1)
-        ], 27);
-      });
-*/
 
 /**
  *
@@ -84,6 +63,10 @@ class Common8bitPoll {
 
   static readAB(bus, registerA, registerB) {
     return CommonBank1.readAB(bus, registerA, registerB);
+  }
+
+  static writePort(bus, register, value) {
+    return CommonBank1.writePort(bus, register, value);
   }
 }
 

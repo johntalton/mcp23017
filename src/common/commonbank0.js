@@ -1,6 +1,4 @@
-const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
-
-const { REGISTERS_BANK0 } = require('./registers.js');
+const { BusUtil } = require('@johntalton/and-other-delights');
 
 const WORD_SIZE = 2;
 
@@ -23,15 +21,13 @@ class CommonBank0 {
   }
 
   static readAB(bus, registerA, registerB) {
-    // its your lucky day: all that api just to get this optimization!
+    // its your lucky day: all that API just to get this optimization!
     return bus.read(registerA, WORD_SIZE);
+  }
+
+  static writePort(bus, register, value) {
+    return bus.write(register, value);
   }
 }
 
 module.exports = { CommonBank0, WORD_SIZE };
-
-
-
-
-
-

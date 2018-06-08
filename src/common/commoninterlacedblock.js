@@ -1,8 +1,5 @@
-
-const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
-
 const { CommonBank0 } = require('./commonbank0.js');
-const { REGISTERS_BANK0, PIN_STATE_SIZE } = require('./registers.js');
+const { REGISTERS_BANK0 } = require('./registers.js');
 
 // bank 0 layout (interlaced)
 // read
@@ -33,26 +30,12 @@ const PIN_STATE_INTERLACED_BLOCK_WRITE = [
   [PART_THREE_START, PART_THREE_SIZE]
 ];
 
-
-/*
-
-// hand writen version of fillmapBank
-        if(buffer.length !== 18) { throw Error('buffer length strange: ' + buffer.length); }
-        return Buffer.concat([
-          buffer.slice(0, -SECOND_OLAT_SIZE),
-          Buffer.from(new Array(4).fill(0)),
-          buffer.slice(-SECOND_OLAT_SIZE)
-        ], 22);
-      });
-
-*/
-
 /**
  *
  **/
 class CommonInterlacedBlock {
   static state(bus) {
-    return  CommonBank0.state(bus, PIN_STATE_INTERLACED_BLOCK_READ);
+    return CommonBank0.state(bus, PIN_STATE_INTERLACED_BLOCK_READ);
   }
 
   static exportAll(bus, buffer) {
@@ -65,6 +48,10 @@ class CommonInterlacedBlock {
 
   static readAB(bus, registerA, registerB) {
     return CommonBank0.readAB(bus, registerA, registerB);
+  }
+
+  static writePort(bus, register, value) {
+    return CommonBank0.writePort(bus, register, value);
   }
 }
 

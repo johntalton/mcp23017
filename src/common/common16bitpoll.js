@@ -1,9 +1,5 @@
-
-const { BusUtil, BitUtil } = require('@johntalton/and-other-delights');
-
 const { CommonBank0, WORD_SIZE } = require('./commonbank0.js');
 const { REGISTERS_BANK0 } = require('./registers.js');
-
 
 // read
 // these could have also been all B first
@@ -42,17 +38,6 @@ const PIN_STATE_16BIT_POLL_WRITE = [
   [OLAT, WORD_SIZE]
 ];
 
-/*
-// hand writen fillmapBlock
-
-        if(buffer.length !== 18) { throw Error('buffer length strange: ' + buffer.length); }
-        return Buffer.concat([
-          buffer.slice(0, READ_RUN_SIZE),
-          Buffer.from(new Array(READ_GAP).fill(0)),
-          buffer.slice(-WORD_SIZE)
-        ], 22);
-*/
-
 /**
  *
  **/
@@ -71,6 +56,10 @@ class Common16bitPoll {
 
   static readAB(bus, registerA, registerB) {
     return CommonBank0.readAB(registerA, registerB);
+  }
+
+  static writePort(bus, register, value) {
+    return CommonBank0.writePort(bus, register, value);
   }
 }
 
