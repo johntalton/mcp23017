@@ -1,6 +1,6 @@
 
 // 1st party imports
-const rasbus = require('rasbus');
+const { Rasbus } = require('@johntalton/rasbus');
 
 // local imports
 const { Mcp23, Util, ConsoleUtil } = require('../');
@@ -18,7 +18,7 @@ class Device {
   }
 
   static _setup(config) {
-    return rasbus.byname(config.bus.driver).init(...config.bus.id)
+    return Rasbus.bytype(config.bus.driver).init(...config.bus.id)
       .then(bus => Mcp23.from(bus, { names: config.names }));
   }
 

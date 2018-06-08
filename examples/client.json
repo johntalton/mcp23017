@@ -3,7 +3,7 @@
   "devices": [
     {
       "name": "mcp23-extention",
-      "bus": { "driver": "i2c-bus", "id": [ 1, 32 ] },
+      "bus": { "driver": "i2c", "id": [ 1, 32 ] },
       "active": true,
 
       "resetOnStart": false,
