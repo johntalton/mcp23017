@@ -16,7 +16,7 @@
       "profile": {
         "mutable": false,
 
-        "mode": "8bit-poll",
+        "mode": "dual-blocks",
         "hardwareAddress": true,
         "slew": true,
 
@@ -35,9 +35,9 @@
       "validateExportsOnStart": true,
       "adoptExistingExports": false,
       "exports": [
-        { "nane": "test", "pin": 0, "direction": "in", "edge": "both" },
+        { "nane": "test", "pin": 0, "direction": "in", "edge": "both", "pullUp": true },
         { "name": "tcsInterrupt", "pin": "\uD83D\uDECE", "direction": "in", "edge": "rising", "activeLow": false },
-        { "name": "\u2600\uFE0F (flash)", "type": "gpio", "pin": 6, "direction": "out" , "pullup": false },
+        { "name": "\u2600\uFE0F (flash)", "type": "gpio", "pin": 6, "direction": "out" , "pullUp": false },
         { "name": "BIsForByte", "type": "port", "_active": false, "port": "BifB", "direction": "in", "_pinOrder": [ 4, 5, 6, 7, 0, 1, 2, 3] }
       ]
     }

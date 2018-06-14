@@ -16,6 +16,11 @@ const PIN_STATE_DUAL_BLOCKS_READ = [
   REGISTERS_BANK1.OLATB
 ];
 
+const BULK_DATA_DUAL_BLOCKS_READ = [
+  [REGISTERS_BANK1.INTFA, 4],
+  [REGISTERS_BANK1.INTFB, 4]
+];
+
 // write
 const WRITE_RUN_SIZE = 5;
 // 1
@@ -52,6 +57,10 @@ class CommonDualBlocks {
 
   static writePort(bus, register, value) {
     return CommonBank1.writePort(bus, register, value);
+  }
+
+  static bulkData(bus) {
+    return CommonBank1.bulkData(bus, BULK_DATA_DUAL_BLOCKS_READ);
   }
 }
 

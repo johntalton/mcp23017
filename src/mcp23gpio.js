@@ -10,7 +10,7 @@
  *  class directly may be preferred at times.
  **/
 const { EventEmitter } = require('events');
-const { Mcp23Cached } = require('./mcp23base.js');
+const { Mcp23Cached } = require('./mcp23cached.js');
 const { Gpio } = require('./gpio.js');
 const { Converter } = require('./converter.js');
 const { Common } = require('./common');
@@ -70,11 +70,13 @@ class Mcp23Gpio extends Mcp23SmartMode {
       .then(intf => {
         // NOTE reading IntCap will cause interrupt clear
         //
+        //return Common.readGpioA(this.bus, this.commonMode)
         return Common.readIntcapA(this.bus, this.commonMode)
           .then(intcap => {
             const pins = Converter.bitFlagToPinSet(intf, this.pinmap.portA);
             const values = Converter.bitFlagToPinSet(intcap, this.pinmap.portA);
 
+            console.log('common Read and Process A', pins, values);
             return Promise.all(pins
               .map((pin, index) => ({ ...pin, value: Converter.toHighLow(values[index].set) }))
               .filter(pin => pin.set)
@@ -104,7 +106,7 @@ class Mcp23Gpio extends Mcp23SmartMode {
     return Promise.resolve(new Gpio(gpio.pin, this));
   }
 
-  watch(pin, cb) {
+  watch(pin, cb) { // eslint-disable promise/prefer-await-to-callback
     console.log('watching pin', pin);
     function filtered(filterPin, fcb) {
       return (err, incommingPin, value) => {
@@ -128,8 +130,11 @@ class Mcp23Gpio extends Mcp23SmartMode {
     //  where does this code live however, as we
     //  don't want to make it part of core interface
 
+    return this.commonReadAndProcessA()
+
     // force a direct read
-    return Common.readGpioA(this.bus, this.commonMode)
+      .then(() => Common.readGpioA(this.bus, this.commonMode))
+    //return Common.readGpioA(this.bus, this.commonMode)
       .then(gpioa => {
         const values = Converter.bitFlagToPinSet(gpioa, this.pinmap.portA);
         console.log('values for all portA gpio', gpioa, values);
@@ -149,9 +154,9 @@ class Mcp23Gpio extends Mcp23SmartMode {
     //  as such we must know/assume existing values if we
     //  do not wish to have side effects of single pin action
     // 
-    return Common.readOlatA(this.bus, this.commonMode)
-      .then(currentOlat => Converter.calculateNewPinValue(currentOlat, pin, value, this.pinmap.portA))
-      .then(newOlat => Common.writeOlatA(this.bus, this.commonMode, newOlat));
+    return Common.readGpioA(this.bus, this.commonMode)
+      .then(currentGpio => Converter.calculateNewPinValue(currentGpio, pin, value, this.pinmap.portA))
+      .then(newGpio => Common.writeGpioA(this.bus, this.commonMode, newGpio));
   }
 }
 

@@ -45,7 +45,9 @@ class ConsoleUtil {
     else { throw Error('unknown direction ' + gpio.direction); }
 
     lines.push('  active-low: ' + gpio.activeLow);
-    lines.push('  pull-up: ' + (gpio.pullup ? 'enabled 100 k\u2126' : 'disabled'));
+    lines.push('  pull-up: ' + (gpio.pullUp ? 'enabled 100 k\u2126' : 'disabled'));
+
+    lines.push('  output latch: ' + gpio.outputLatch);
 
     return lines.join('\n');
   }

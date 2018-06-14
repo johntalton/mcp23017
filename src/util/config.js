@@ -1,3 +1,4 @@
+const aod = require('@johntalton/and-other-delights');
 
 class ConfigUtil {
   static normalizeDevice(device, idx) {
@@ -48,7 +49,10 @@ class ConfigUtil {
       const dir = exp.direction !== undefined ? exp.direction : 'out'; // todo default_direction
       const edge = exp.edge !== undefined ? exp.edge : 'none'; // todo default_edge
       const activeLow = exp.activeLow !== undefined ? exp.activeLow : false; // default_activeLow
-      const pullUp = exp.pullup !== undefined ? exp.pullUp : false; // todo default_pullUp
+      const pullUp = exp.pullUp !== undefined ? exp.pullUp : false; // todo default_pullUp
+
+      // todo, if this is an output then direction of "high" or "low" should control initial latch
+      const olatch = exp.outputLatch !== undefined ? exp.outputLatch : false; // todo match value?
 
       const pinOrder = exp.pinOrder !== undefined ? exp.pinOrder : [];
 
@@ -63,7 +67,8 @@ class ConfigUtil {
         direction: dir,
         edge: edge,
         activeLow: activeLow,
-        pullup: pullUp,
+        pullUp: pullUp,
+        outputLatch: olatch,
 
         pinOrder: pinOrder
       };

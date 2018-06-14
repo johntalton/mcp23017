@@ -25,6 +25,18 @@ const PIN_STATE_8BIT_POLL_READ = [
   REGISTERS_BANK1.OLATB
 ];
 
+const BULK_DATA_8BIT_POLL_READ = [
+  REGISTERS_BANK1.INTFA,
+  REGISTERS_BANK1.INTCAPA,
+  REGISTERS_BANK1.GPIOA,
+  REGISTERS_BANK1.OLATA,
+
+  REGISTERS_BANK1.INTFB,
+  REGISTERS_BANK1.INTCAPB,
+  REGISTERS_BANK1.GPIOB,
+  REGISTERS_BANK1.OLATB
+];
+
 // write
 const PIN_STATE_8BIT_POLL_WRITE = [
   REGISTERS_BANK1.IODIRA,
@@ -67,6 +79,10 @@ class Common8bitPoll {
 
   static writePort(bus, register, value) {
     return CommonBank1.writePort(bus, register, value);
+  }
+
+  static bulkData(bus) {
+    return CommonBank1.bulkData(bus, BULK_DATA_8BIT_POLL_READ);
   }
 }
 

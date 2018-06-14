@@ -74,11 +74,29 @@ class Converter {
     return high ? DigitalIO.HIGH : DigitalIO.LOW;
   }
 
+  // ----
+  // todo these don't seem to be in the correct class
+  static makeBit(offset, fill, value) {
+    const tail = new Array(8 - offset - 1).fill(fill);
+    const prams = new Array(offset).fill(fill).concat([value], tail);
+    // console.log('prams', offset, prams);
+    return BitUtil.packbits(PORT_PACKMAP, ...prams);
+  }
+
+  static makeSetBit(offset, value) {
+    return Converter.makeBit(offset, BIT_UNSET, value);
+  }
+
+  static makeUnsetBit(offset, value) {
+    return Converter.makeBit(offset, BIT_SET, value);
+  }
+
   static bitFlagToPinSet(value, portPinmap) {
     const bits = BitUtil.unpackbits(PORT_PACKMAP, value);
     // now zip the arrays and test set as bit high.
-    return portPinmap.gpios.map((name, i) => ({ pin: name, set: bits[i] === DigitalIO.HIGH }));
+    return portPinmap.gpios.map((name, i) => ({ pin: name, set: bits[i] === BIT_SET }));
   }
+  // -----
 
   static calculateNewPinValue(current, pin, value, portPinmap) {
     const index = portPinmap.gpios.indexOf(pin);
@@ -96,6 +114,7 @@ class Converter {
   }
 
   static toState(gpios, pinmap, profile) {
+    // console.log('converter state to common', gpios);
     const byPort = gpios.reduce((acc, gpio) => {
       // todo its a waist we don't pass down the foundIndex
       //  instead of recalculating it
@@ -118,30 +137,10 @@ class Converter {
     };
   }
 
-  // ----
-  // todo these don't seem to be in the correct class
-
-  static makeBit(offset, fill, value) {
-    const tail = new Array(8 - offset - 1).fill(fill);
-    const prams = new Array(offset).fill(fill).concat([value], tail);
-    // console.log('prams', offset, prams);
-    return BitUtil.packbits(PORT_PACKMAP, ...prams);
-  }
-
-  static makeSetBit(offset, value) {
-    return Converter.makeBit(offset, BIT_UNSET, value);
-  }
-
-  static makeUnsetBit(offset, value) {
-    return Converter.makeBit(offset, BIT_SET, value);
-  }
-
-  // -----
-
   static toPortState(gpios, portPinmap) {
     return gpios.reduce((state, gpio) => {
       const pin = portPinmap.gpios.indexOf(gpio.pin);
-      // console.log('to port state pin', pin, state);
+      //console.log('reduction to port state pin', pin, state);
 
       if(pin === undefined) { throw Error('pin not found in map: ' + gpio.pin); }
       if(!Number.isInteger(pin)) { throw Error('pin not resolved to integer: ' + gpio.pin + ' / ' + pin); }
@@ -150,11 +149,11 @@ class Converter {
 
       const direction = gpio.direction === Direction.DIRECTION_IN ? BIT_SET : BIT_UNSET;
       const polarity = gpio.activeLow ? BIT_SET : BIT_UNSET;
-      const pullup = gpio.pullup ? BIT_SET : BIT_UNSET;
+      const pullup = gpio.pullUp ? BIT_SET : BIT_UNSET;
       const [intenabled, intcontrol, defaultval] = Converter.toGpioInterrupt(gpio.edge);
-      const outputLatch = gpio.olat ? BIT_UNSET : BIT_SET;
+      const outputLatch = gpio.outputLatch ? BIT_SET : BIT_UNSET;
 
-      console.log('\tadding pin to state', gpio.pin, pin, direction, gpio.direction);
+      console.log('\tadding pin to state', gpio.pin, pin, gpio.direction, gpio.outputLatch);
       console.log('\t\t', gpio.edge, intenabled, intcontrol, defaultval);
 
       const iodir = Converter.makeUnsetBit(pin, direction); // unset
@@ -186,15 +185,56 @@ class Converter {
   }
 
   static toGpioInterrupt(edge) {
-    const DNC = BIT_SET; // todo this creates a signature for out interactions
+    const DNC = BIT_UNSET; // todo this creates a signature for out interactions
 
+    // note, we use BIT_SET/UNSET as defaultValue here as this return array
+    //  represents the bits needed to correctly set `gpinten`, `intcon` and `defval`
     switch(edge) {
       case Edge.EDGE_NONE: return [BIT_UNSET, DNC, DNC]; break;
-      case Edge.EDGE_RISING: return [BIT_SET, BIT_SET, DigitalIO.LOW]; break; // todo
-      case Edge.EDGE_FALLING: return [BIT_SET, BIT_SET, DigitalIO.HIGH]; break; // todo correct directions?
+      case Edge.EDGE_RISING: return [BIT_SET, BIT_SET, BIT_UNSET]; break; // todo
+      case Edge.EDGE_FALLING: return [BIT_SET, BIT_SET, BIT_SET]; break; // todo correct directions?
       case Edge.EDGE_BOTH: return [BIT_SET, BIT_UNSET, DNC]; break;
       default: throw Error('unknown edge: ' + edge); break;
     }
+  }
+
+  static fromData(data, pinmap) {
+    // todo data is in register format, group all values by pin
+
+    const dataA = {
+      intflags: BitUtil.unpackbits(PORT_PACKMAP, data.intfA),
+      intcaps: BitUtil.unpackbits(PORT_PACKMAP, data.intcapA),
+      gpios: BitUtil.unpackbits(PORT_PACKMAP, data.gpioA),
+      olats: BitUtil.unpackbits(PORT_PACKMAP, data.olatA)
+    };
+
+    const dataB = {
+      intflags: BitUtil.unpackbits(PORT_PACKMAP, data.intfB),
+      intcaps: BitUtil.unpackbits(PORT_PACKMAP, data.intcapB),
+      gpios: BitUtil.unpackbits(PORT_PACKMAP, data.gpioB),
+      olats: BitUtil.unpackbits(PORT_PACKMAP, data.olatB)
+    };
+
+    return [].concat(
+      Converter.fromPortData(dataA, pinmap.portA),
+      Converter.fromPortData(dataB, pinmap.portB)
+    );
+  }
+
+  static fromPortData(data, portPinmap) {
+    const pins = [0, 1, 2, 3, 4, 5, 6, 7]; // todo see fromPortState use also
+
+    return pins.map(index => {
+      const pin = portPinmap.gpios[index];
+      return {
+        port: portPinmap.name,
+        pin: pin,
+        pendingInterrupt: data.intflags[index] === BIT_SET,
+        capturedValue: Converter.toHighLow(data.intcaps[index] === BIT_SET),
+        gpioValue: Converter.toHighLow(data.gpios[index] === BIT_SET),
+        olatValue: Converter.toHighLow(data.olats[index] === BIT_SET)
+      };
+    });
   }
 
   static fromPortState(state, portPinmap) {
@@ -220,7 +260,7 @@ class Converter {
       const pul = pullUps[index] === BIT_SET;
       const pint = intFlags[index] === BIT_SET;
       const inten = intEnableds[index] === BIT_SET;
-      const defVal = defaultValues[index] === BIT_SET ? DigitalIO.HIGH : DigitalIO.LOW;
+      const defVal = Converter.toHighLow(defaultValues[index] === BIT_SET);
       const intCtrl = intControls[index] === BIT_SET;
       const olat = olats[index] === BIT_SET ? OLAT_LOGIC_HIGH : OLAT_LOGIC_LOW;
 
@@ -228,7 +268,7 @@ class Converter {
         port: portPinmap.name,
         pin: pin,
         direction: dir,
-        pullup: pul,
+        pullUp: pul,
         activeLow: alow,
         pendingInterrupt: pint,
         edge: Converter.fromGpioInterrupt(inten, intCtrl, defVal),

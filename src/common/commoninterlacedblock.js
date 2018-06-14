@@ -14,6 +14,10 @@ const PIN_STATE_INTERLACED_BLOCK_READ = [
   [SECOND_OLAT, SECOND_OLAT_SIZE]
 ];
 
+const BULK_DATA_INTERLACED_BLOCK_READ = [
+  [REGISTERS_BANK0.INFA, 8]
+];
+
 // write
 // todo move gpintenAB to end
 const PART_ONE_START = REGISTERS_BANK0.IODIRA;
@@ -52,6 +56,10 @@ class CommonInterlacedBlock {
 
   static writePort(bus, register, value) {
     return CommonBank0.writePort(bus, register, value);
+  }
+
+  static bulkData(bus) {
+    return CommonBank0.bulkData(bus, BULK_DATA_INTERLACED_BLOCK_READ);
   }
 }
 

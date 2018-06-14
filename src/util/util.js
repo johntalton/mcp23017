@@ -2,7 +2,7 @@
 class Util {
   static isDefaultGpio(gpio) { // todo these function have knowledge (move out)
     if(gpio.direction !== 'in') { return false; }
-    if(gpio.pullup !== false) { return false; }
+    if(gpio.pullUp !== false) { return false; }
     if(gpio.activeLow !== false) { return false; }
     if(gpio.edge !== 'none') { return false; }
     return true;
@@ -24,7 +24,7 @@ class Util {
 
   static matchGpios(exportGpio, activeGpio) { // todo these function have knowledge (move out)
     if(exportGpio.direction !== activeGpio.direction) { return [false, 'direction']; }
-    if(exportGpio.pullup !== activeGpio.pullup) { return [false, 'pull-up']; }
+    if(exportGpio.pullUp !== activeGpio.pullUp) { return [false, 'pull-up']; }
     if(exportGpio.activeLow !== activeGpio.activeLow) { return [false, 'activeLow']; }
     if(exportGpio.mode !== activeGpio.mode) { return [false, 'mode']; }
     return [true, ''];

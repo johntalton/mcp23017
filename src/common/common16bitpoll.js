@@ -26,6 +26,13 @@ const PIN_STATE_16BIT_POLL_READ = [
   [OLAT, WORD_SIZE]
 ];
 
+const BULK_DATA_16BIT_POLL_READ = [
+  [REGISTERS_BANK0.INTFA, WORD_SIZE],
+  [REGISTERS_BANK0.INTCAPA, WORD_SIZE],
+  [REGISTERS_BANK0.GPIOA, WORD_SIZE],
+  [REGISTERS_BANK0.OLATA, WORD_SIZE]
+];
+
 // write
 const PIN_STATE_16BIT_POLL_WRITE = [
   [IODIR, WORD_SIZE],
@@ -60,6 +67,10 @@ class Common16bitPoll {
 
   static writePort(bus, register, value) {
     return CommonBank0.writePort(bus, register, value);
+  }
+
+  static bulkData(bus) {
+    return CommonBank0.bulkData(bus, BULK_DATA_16BIT_POLL_READ);
   }
 }
 

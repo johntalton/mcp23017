@@ -1,6 +1,6 @@
 const { Bank, CommonMode } = require('../defines.js');
-const { ModeSelection } = require('./modeselection.js');
 const { REGISTERS } = require('./registers.js');
+const { ModeSelection } = require('./modeselection.js');
 const { Common8bitPoll } = require('./common8bitpoll.js');
 const { Common16bitPoll } = require('./common16bitpoll.js');
 const { CommonInterlacedBlock } = require('./commoninterlacedblock.js');
@@ -16,7 +16,7 @@ class CommonReject {
   static readPort() { return Promise.reject(Error('common reject readPort')); }
   static readAB() { return Promise.reject(Error('common reject readAB')); }
   static wrtiePort() { return Promise.reject(Error('common reject writePort')); }
-  static readBulk() { return Promise.reject(Error('common reject readBulk')); }
+  static bulkData() { return Promise.reject(Error('common reject bulkData')); }
 }
 
 /**
@@ -52,7 +52,7 @@ class Common extends CommonDirect {
       olat: buf.readUInt8(REGISTERS[mode.bank].OLATB)
     };
 
-    // console.log(iocon, a, b)
+    console.log(iocon, a, b);
     return {
       iocon: iocon,
       a: a,
@@ -112,17 +112,28 @@ class Common extends CommonDirect {
   }
 
   // read bulk data registers via proper mode
-  static readBulk(bus, mode) {
+  static bulkData(bus, mode) {
     return ModeSelection.from(mode)
       .on(CommonMode.MODE_MAP_8BIT_POLL, Common8bitPoll)
       .on(CommonMode.MODE_MAP_16BIT_POLL, Common16bitPoll)
       .on(CommonMode.MODE_MAP_DUAL_BLOCKS, CommonDualBlocks)
       .on(CommonMode.MODE_MAP_INTERLACED_BLOCK, CommonInterlacedBlock)
       .catch(CommonReject)
-      .readBulk(bus)
+      .bulkData(bus)
       .then(buffer => {
-        throw Error('readBulk');
-        return buffer.readUInt8(0);
+        console.log('bulkData memory map', buffer);
+
+        // convert buffer to named values
+        return {
+          intfA: buffer.readUInt8(REGISTERS[mode.bank].INTFA),
+          intfB: buffer.readUInt8(REGISTERS[mode.bank].INTFB),
+          intcapA: buffer.readUInt8(REGISTERS[mode.bank].INTCAPA),
+          intcapB: buffer.readUInt8(REGISTERS[mode.bank].INTCAPB),
+          gpioA: buffer.readUInt8(REGISTERS[mode.bank].GPIOA),
+          gpioB: buffer.readUInt8(REGISTERS[mode.bank].GPIOB),
+          olatA: buffer.readUInt8(REGISTERS[mode.bank].OLATA),
+          olatB: buffer.readUInt8(REGISTERS[mode.bank].OLATB)
+        };
       });
   }
 
@@ -181,7 +192,7 @@ class Common extends CommonDirect {
   static readOlatAB(bus, mode) { return Common.readAB(bus, mode, REGISTERS[mode.bank].OLATA, REGISTERS[mode.bank].OLATB); }
 
   // write (alias methods for register names)
-  static writeGpioA(bus, mode, value) { return Promise.reject(Error('writeGpioA')); }
+  static writeGpioA(bus, mode, value) { return Common.writePort(bus, mode, REGISTERS[mode.bank].GPIOA, value); }
   static writeGpioB(bus, mode, value) { return Promise.reject(Error('writeGpioB')); }
   static writeGpioAB(bus, mode, value) { return Promise.reject(Error('writeGpioAB')); }
 

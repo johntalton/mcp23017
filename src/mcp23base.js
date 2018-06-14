@@ -40,9 +40,12 @@ class Mcp23Base {
     return Common.state(this.bus, mode)
       .then(state => {
         const profile = Converter.fromIocon(state.iocon);
-        if(profile.bank !== mode.bank) {
-          console.log('read profiles bank is not the bank used to read!');
+
+        const pcm = Converter.toIoconMode(profile.mode);
+        if(!CommonMode.match(pcm, mode)) {
+          console.log('read profiles bank is not the bank used to read!', profile.mode, mode);
         }
+
         //
         return {
           profile: profile,
@@ -58,68 +61,13 @@ class Mcp23Base {
     const state = Converter.toState(gpios, this.pinmap);
     return Common.exportAll(this.bus, mode, state);
   }
-}
 
-/**
- * Adding Cache support for mode.
- **/
-class Mcp23Cached extends Mcp23Base {
-  constructor(bus, options) {
-    super(bus, options);
-    this.commonMode = CommonMode.MODE_MAP_DEFAULT;
-    // todo _iocon
-  }
-
-  get mode() { return Converter.fromIoconMode(this.commonMode.bank, this.commonMode.sequential); }
-  set mode(m) { this.commonMode = Converter.toIoconMode(m); }
-
-  sniffMode() {
-    return super.sniffMode(this.commonMode);
-  }
-
-  // wrap setProfile to use cached mode
-  setProfile(profile) {
-    // pick the target mode form out cached common mode or the profiles
-    const userProfile = (profile.mode !== undefined && profile.mode !== false);
-    const target = {
-      mode: userProfile ? profile.mode : Converter.fromIoconMode(...this.commonMode),
-      cmode: userProfile ? Converter.toIoconMode(profile.mode) : this.commonMode
-    };
-
-    // we use our cached mode to write, and then update to the newly
-    //  set profile on success
-    return super.setProfile(this.commonMode, {
-      ...profile,
-      mode: target.mode
-    })
-      .then(ret => {
-        this.commonModeode = target.cmode;
-        return ret;
+  bulkData(mode) {
+    return Common.bulkData(this.bus, mode)
+      .then(data => {
+        return Converter.fromData(data, this.pinmap);
       });
   }
-
-  profile() {
-    // console.log('using cached mode for profile read', this.commonMode);
-    return super.profile(this.commonMode);
-    // todo cache read mode here. or provide option
-  }
-
-  state() {
-    return super.state(this.commonMode);
-  }
-
-  exportAll(gpios) {
-    return super.exportAll(this.commonMode, gpios);
-  }
 }
 
-/**
- *
- **/
-class Mcp23 extends Mcp23Cached {
-  static from(bus, options) {
-    return Promise.resolve(new Mcp23(bus, options));
-  }
-}
-
-module.exports = { Mcp23, Mcp23Cached };
+module.exports = { Mcp23Base };
