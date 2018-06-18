@@ -1,6 +1,6 @@
-# Microchip 8/16-bit I/O Expander (mcp23xxx)
+# Microchip 8/16-bit I/O Expander
 
-Microchip's 8bit and 16bit wide gpio chip provides the ability to offload gpio to dedicated chip via i2c or spi interface.
+Microchip's 8bit and 16bit wide gpio expander provides the ability to offload gpio to dedicated chip via i2c or spi interface.
 
 This implmentation sports several feature not found elsewere (js or otherwise). Providing direct access to the full
 feautre set of the chip.
@@ -78,27 +78,40 @@ And will a Port can be using independently, or with other single Pins, it can be
 Full 16-bit word write.  This is for the most part a wrapper around the combined PortAB and creating the higher level access method: `readUInt16LE`, `readUInt16BE`, `readInt16LE`, `readInt16BE`.
 
 
-### Bank 0/1
+### Mode
 
-The expander exposes the ability to address the chip memory map as interlaced Port A/B (`BANK0`) or in block A / B (`BANK1`) modes.
-Such that reading bytes in interlaced mode results in ABAB... and block requires two reads of AAA... and BBB....
+Four mode of access are supported:
+ - `8bit-poll`
+ - `16bit-poll`
+ - `dual-blocks`
+ - `interlaced-block`
 
-Setting the chips profile (via `setProfile`) can update the chips access mode. 
+These are the permutations of the register memory layout (aka `BANK`) and if the chips auto-increment is enabled (aka `sequential`).
 
-While the chips defaults to `BANK0` on power-on-reset (aka on power up), and is the most common operational mode, the nature of the api needs to assume correctly the current bank prior to other actions (including `setProfile` - which is used to change the bank and even `profile` may fail if bank is assumed incorrectly).  Thus, `.bank` is expossed on the chip which can be pre-set to the bank value prior to other actions (it makes no bus calls, it just updates this instances cache of expected bank value).
+As such for the `8bit-poll` and `16bit-poll` successive non-address reads or write (ie i2cbus.write(Buffer)) would return the same 8 or 16 bit register.  This is usefull for impmenenting, among other features, a fast poll on the interrupt flags register in order to create a software interrupt in place of INTA and INTB when they are not avaialble.
 
-Give this complexity, the chip also offers the `sniffBank` method.
+`dual-blocks` and `interlaced-block` can be usefull when doing bulk operations (like full `exportAll` or `profile`).
 
-##### Sniff Mode
+Using `dual-block` could allow for optimized writes or reconfigurations to a single port (A or B) while minimizing distrubtive or unneccesary register reads / writes.
 
-Calling `sniffMode` will attempt to safely access the bus and registers, assuming this may not be a mcp23xxx chip, and/or the `bank` \ `sequenatil` may be set incorrectly.
+The default mode is `interlaced-block`, providing a common flexible mode.  It allow for reading 16bit words in single calls, and also allowing for block reads of those words.  This can be used as a compromise mode between 16bit poll and bulk access.   
+
+Setting the chips profile (via `setProfile`) can update the chips access mode. As the datasheet notes, the mode changes as soon as the profile (IOCON register) is writen.  While the `Mcp23` api exposed does attempt to cache the mode correclty on read and writes, impmementors should be aware of the behavior and result it may have on other code that assume or does not share the mode cache (the Transaction api which can lock / watch mode provides a path to address some of these issue).
+
+While the chips defaults to `interlaced-block` on power-on-reset (aka on power up), and is the most common operational mode, the nature of the api needs to assume correctly the current mode prior to other actions (including `setProfile` - which is used to change the mode and even `profile` may fail if bank is assumed incorrectly [or worse, not fail and update incorrect register]).  Thus, `.mode` is expossed on the `Mcp23` api which can be pre-set to the mode value prior to other actions (it makes no bus calls, it just updates this instances cache of expected mode value [assming use of the high level cached mode version of the api]).
+
+Give this complexity, this library also offers the `sniffBank` method as follows:
+
+#### Sniff Mode
+
+Calling `sniffMode` will attempt to safely access the bus and registers, assuming this may not be a Mcp23 chip, and / or the mode may not be assumed correctly.
 
 It does this by reading several addressing and probing state to attempt to guess the correct bank.
 
 ```javascript
   ...
   client.sniffMode().then(guess => {
-    console.log('smells like bank/sequential', guess);
+    console.log('smells like', guess);
   })
 ```
 
