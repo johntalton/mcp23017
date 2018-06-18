@@ -6,13 +6,14 @@ This implmentation sports several feature not found elsewere (js or otherwise). 
 feautre set of the chip.
 
 Such as:
+ - Optional Gpio application extention
  - Smart Mode (bank/sequential) Sniffing
  - Support multiple access modes (`8bit-poll`, `16bit-poll`, `dual-blocks`, `interlaced-block`)
  - Dual / Single and Poll interrupt support
  - Pull-up resistor state access
  - Output and Output Latch access
  - Gpio / Byte / Word interface (with access optimizations)
- - Burst mode read / write
+ - Burst read / write
  - Dynamic Pin naming schemes
  - I2C and SPI generic interface (beta)
  - 8-bit version support (beta - missing proper iocon register setup)
@@ -37,13 +38,15 @@ The library assume external resources for providing interrupt callbacks into the
 
 A common package like `onoff` can be used to capture the interrupts (via efficiant `.watch` methods).  Though, no specific dependency exists.  
 
-Software interrupts can also be achived, at the cost of polling the chip itself.
+Software interrupts can also be achived, at the cost of polling this chip (with some efficiency via the interrupt flags register).
+
+Take care when assuming startup configuration, as the chips INTA and INTB can be configured in a variety of ways (`open-drain`, mirror enabled, etc).  Other condition exist if using mcp23 lib directly (aka, not the gpio application) on when and what order individual pins are configured, and thus, when and what conditions INTA and INTB can be triggered.
 
 ### Bus (i2c / spi)
 
 Similar to gpio for interrupts, the library only assumes a common interface for bus implementations.  This is currently tied to the API used in `@johntalton/rasbus` wrapper package.  
 
-`i2c-bus` and `spi-device` are well tested.
+`i2c-bus` is well tested.
 
 ### Pins / Ports / Word up
 
@@ -75,7 +78,6 @@ And will a Port can be using independently, or with other single Pins, it can be
 Full 16-bit word write.  This is for the most part a wrapper around the combined PortAB and creating the higher level access method: `readUInt16LE`, `readUInt16BE`, `readInt16LE`, `readInt16BE`.
 
 
-
 ### Bank 0/1
 
 The expander exposes the ability to address the chip memory map as interlaced Port A/B (`BANK0`) or in block A / B (`BANK1`) modes.
@@ -99,6 +101,8 @@ It does this by reading several addressing and probing state to attempt to guess
     console.log('smells like bank/sequential', guess);
   })
 ```
+
+This lead to the option of non-distructive reads of the chips configuration (`profile` / `status`) after program / or MCP restart but not chip reset.  The included example client uses this methodology to validate chip configuration upon start to avoid aditional register updates (configurable via its json).  
 
 ### Dynamic naming
 
@@ -131,6 +135,11 @@ Note that `gpios` array values must be globaly unique to the chip (aka you can n
 
 Custom maps can use a mix of types (such as "led" etc) as long as they are unique and equitable (aka `===`)
 
+### Burst Read / Write
+
+Because this chip support simplified access to repeat register writes (like `8bit-poll` mode) this library can support a buffered read and write that can be streamed to the chip via native bus support.
+
+This not only provides a efficient way to poll (read) but also potentialy provides a high enough output performance to support unique applications not able to be provided by tradition gpio, and /or other implementaitons of mcp23 libraries.
 
 ### SysFS (device tree overlay)
 
@@ -141,4 +150,7 @@ And can be accessed via libs like `onoff`.
  - requires system mod - require permissions to modify boot config / not portable across generic platform
  - does not expos some advanced features - bank access, fast poll, multiple A/B Interrupts, etc.
  
+ ### Refs
+ 
+Amongst the typical [goto](https://github.com/adafruit/Adafruit-MCP23017-Arduino-Library) source of implementations for these types of things, the [pin control](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/pinctrl/pinctrl-mcp23s08.c) in the linux kernel is descriptive.  Along with [wiringPi](https://git.drogon.net/?p=wiringPi;a=blob;f=wiringPi/mcp23017.c;h=4c3952d268751a3347a35ee3daffc3a7038d191b;hb=HEAD) version.  And a javascript alternative [johnny-five](https://github.com/rwaldron/johnny-five/blob/master/lib/expander.js)
 
