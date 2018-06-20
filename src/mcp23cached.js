@@ -21,21 +21,54 @@ class Mcp23Cached extends Mcp23Base {
 
   // wrap setProfile to use cached mode
   setProfile(profile) {
-    // pick the target mode form out cached common mode or the profiles
-    const userProfile = (profile.mode !== undefined && profile.mode !== false);
-    const target = {
-      mode: userProfile ? profile.mode : Converter.fromIoconMode(...this.commonMode),
-      cmode: userProfile ? Converter.toIoconMode(profile.mode) : this.commonMode
-    };
+    // this is where profile.mode vs this.mode is resolved
+    // we also handle thie mode false case in the profile as
+    // explicit use this.mode
+    // the result is a target mode-pair (mode and common mode)
+    // that is used to set, and then cache the commonMode for
+    // subsequent calls
+    const notAuto = profile.mode !== false;
+    const useProfile = (notAuto && profile.mode !== undefined);
+
+    const targetMode = useProfile ? profile.mode : Converter.fromIoconMode(this.commonMode.bank, this.commonMode.sequential);
+    const targetCommonMode = useProfile ? Converter.toIoconMode(profile.mode) : this.commonMode;
+
+    const matchMode = CommonMode.match(targetCommonMode, this.commonMode));
+    const stableMode = !notAuto || matchMode;
+
+    if(stableMode)
+      console.log('Mode is stable', targetMode);
+      // todo this could provide the ability to create extended
+      //  write buffer during a mixxed profile data set operation.
+      //  that is, becase the mode is stable we can assume
+      //  normal mode write optimization can be done
+
+      // todo this can be optimized bellow to not include the
+      //   re-cacheing of the commonMode, nor the profile
+      //   decomposition and injection of targetMode.
+    }
+    else {
+      console.log(' -- FLASH FLASH FLASH (mode change)  --', targetMode);
+      // todo similarly to the above stable mode, we have some
+      //   posibility to add further operation now that we can assume
+      //   the mode to some degree.
+      //   this is, more risky behavior and is advised agasint
+      //   in the datasheet
+
+      // todo the profile.mutable concept needs to be managed or
+      //   extended into this context, if we are not allowed to
+      //   change the profile (in this case the mode) then this
+      //   operation should be blocked
+    }
 
     // we use our cached mode to write, and then update to the newly
     //  set profile on success
     return super.setProfile(this.commonMode, {
       ...profile,
-      mode: target.mode
+      mode: targetMode
     })
       .then(ret => {
-        this.commonMode = target.cmode;
+        this.commonMode = targetCommonMode;
         return ret;
       });
   }
