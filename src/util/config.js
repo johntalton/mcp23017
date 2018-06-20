@@ -1,8 +1,10 @@
 const aod = require('@johntalton/and-other-delights');
+const { DEFAULT_NAMES } = require('../names.js');
 
 class ConfigUtil {
-  static normalizeDevice(device, idx) {
-    const name = device.name !== undefined ? device.name : idx.toString(10);
+  static normalizeDevice(device, fallbackName) {
+    const fallback = fallbackName !== undefined ? falbackName.toString() : 'todo_random_name';
+    const name = device.name !== undefined ? device.name : fallback;
     const active = device.active !== undefined ? device.active : true;
 
     const resetOS = device.resetOnStart !== undefined ? device.resetOnStart : false; // done not clobber anything, safe
@@ -75,13 +77,19 @@ class ConfigUtil {
     });
   }
 
-  static normalizeNames(names) { return names; } // todo
+  static normalizeNames(names) {
+    if(names === undefined) {
+      return DEFAULT_NAMES;
+    }
+
+    return names; // todo
+  }
 
   static normalizeProfile(profile) {
     const mutable = profile.mutable !== undefined ? profile.mutable : true;
 
     const slew = profile.slew !== undefined ? profile.slew : true;
-    const hwAddr = profile.hardwareAddress !== undefined ? profile.hardwareAddress : false;
+    const hwAddr = profile.hardwareAddress !== undefined ? profile.hardwareAddress : true; // todo this is not power on default
     const int = profile.interrupt !== undefined ? profile.interrupt : { };
 
     const mode = profile.mode !== undefined ? profile.mode : false;
