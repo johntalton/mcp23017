@@ -19,6 +19,18 @@ Such as:
  - 8-bit version support (beta - missing proper iocon register setup)
  - Detailed profile configuration (slew, hardward address, etc.)
 
+### Obligatory fritzing
+
+![mcp23 wire fritzing](examples/basic.png)
+
+Note the use of the Raspberry pi's `gpio5` and `gpio6` (which default pull-up state allows the use of the `open-darin` configuration on the Mcp23 interrupt (not default configuration for chip, but what the examples/client assumes))
+
+Also `gpio13` is used to manage the `RESET` pin.  This allows for more descrete power managment; usefull for debuging; controlling inital boot state (using the pi's different pull-up options).  
+
+Lastly we drive the A0 A1 and A2 hardware address pins (as controlled by the profiles hardware address enable flag) `LOW`, resulting in the default I2C address.
+
+Using a more dynamic system (combinding the above two features of `RESET` managment and AX hardware addressing) a mult-chip configuration that dyanmic enabled each chip, and assignes uniqe addresses is possible (circits that provide this type of step addressing can be found "online")
+
 ### Example
 
 Create a new instance using `from`
