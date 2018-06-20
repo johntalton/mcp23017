@@ -1,22 +1,35 @@
-# Microchip 8/16-bit I/O Expander (mcp23xxx)
+# Microchip 8/16-bit I/O Expander
 
-Microchip's 8bit and 16bit wide gpio chip provides the ability to offload gpio to dedicated chip via i2c or spi interface.
+Microchip's 8bit and 16bit wide gpio expander provides the ability to offload gpio to dedicated chip via i2c or spi interface.
 
 This implmentation sports several feature not found elsewere (js or otherwise). Providing direct access to the full
 feautre set of the chip.
 
 Such as:
+ - Optional Gpio application extention
  - Smart Mode (bank/sequential) Sniffing
  - Support multiple access modes (`8bit-poll`, `16bit-poll`, `dual-blocks`, `interlaced-block`)
  - Dual / Single and Poll interrupt support
  - Pull-up resistor state access
  - Output and Output Latch access
  - Gpio / Byte / Word interface (with access optimizations)
- - Burst mode read / write
+ - Burst read / write
  - Dynamic Pin naming schemes
  - I2C and SPI generic interface (beta)
  - 8-bit version support (beta - missing proper iocon register setup)
  - Detailed profile configuration (slew, hardward address, etc.)
+
+### Obligatory fritzing
+
+![mcp23 wire fritzing](examples/basic.png)
+
+Note the use of the Raspberry pi's `gpio5` and `gpio6` (which default pull-up state allows the use of the `open-darin` configuration on the Mcp23 interrupt (not default configuration for chip, but what the examples/client assumes))
+
+Also `gpio13` is used to manage the `RESET` pin.  This allows for more descrete power managment; usefull for debuging; controlling inital boot state (using the pi's different pull-up options).  
+
+Lastly we drive the A0 A1 and A2 hardware address pins (as controlled by the profiles hardware address enable flag) `LOW`, resulting in the default I2C address.
+
+Using a more dynamic system (combinding the above two features of `RESET` managment and AX hardware addressing) a mult-chip configuration that dyanmic enabled each chip, and assignes uniqe addresses is possible (circits that provide this type of step addressing can be found "online")
 
 ### Example
 
@@ -37,13 +50,15 @@ The library assume external resources for providing interrupt callbacks into the
 
 A common package like `onoff` can be used to capture the interrupts (via efficiant `.watch` methods).  Though, no specific dependency exists.  
 
-Software interrupts can also be achived, at the cost of polling the chip itself.
+Software interrupts can also be achived, at the cost of polling this chip (with some efficiency via the interrupt flags register).
+
+Take care when assuming startup configuration, as the chips INTA and INTB can be configured in a variety of ways (`open-drain`, mirror enabled, etc).  Other condition exist if using mcp23 lib directly (aka, not the gpio application) on when and what order individual pins are configured, and thus, when and what conditions INTA and INTB can be triggered.
 
 ### Bus (i2c / spi)
 
 Similar to gpio for interrupts, the library only assumes a common interface for bus implementations.  This is currently tied to the API used in `@johntalton/rasbus` wrapper package.  
 
-`i2c-bus` and `spi-device` are well tested.
+`i2c-bus` is well tested.
 
 ### Pins / Ports / Word up
 
@@ -75,30 +90,44 @@ And will a Port can be using independently, or with other single Pins, it can be
 Full 16-bit word write.  This is for the most part a wrapper around the combined PortAB and creating the higher level access method: `readUInt16LE`, `readUInt16BE`, `readInt16LE`, `readInt16BE`.
 
 
+### Mode
 
-### Bank 0/1
+Four mode of access are supported:
+ - `8bit-poll`
+ - `16bit-poll`
+ - `dual-blocks`
+ - `interlaced-block`
 
-The expander exposes the ability to address the chip memory map as interlaced Port A/B (`BANK0`) or in block A / B (`BANK1`) modes.
-Such that reading bytes in interlaced mode results in ABAB... and block requires two reads of AAA... and BBB....
+These are the permutations of the register memory layout (aka `BANK`) and if the chips auto-increment is enabled (aka `sequential`).
 
-Setting the chips profile (via `setProfile`) can update the chips access mode. 
+As such for the `8bit-poll` and `16bit-poll` successive non-address reads or write (ie i2cbus.write(Buffer)) would return the same 8 or 16 bit register.  This is usefull for impmenenting, among other features, a fast poll on the interrupt flags register in order to create a software interrupt in place of INTA and INTB when they are not avaialble.
 
-While the chips defaults to `BANK0` on power-on-reset (aka on power up), and is the most common operational mode, the nature of the api needs to assume correctly the current bank prior to other actions (including `setProfile` - which is used to change the bank and even `profile` may fail if bank is assumed incorrectly).  Thus, `.bank` is expossed on the chip which can be pre-set to the bank value prior to other actions (it makes no bus calls, it just updates this instances cache of expected bank value).
+`dual-blocks` and `interlaced-block` can be usefull when doing bulk operations (like full `exportAll` or `profile`).
 
-Give this complexity, the chip also offers the `sniffBank` method.
+Using `dual-block` could allow for optimized writes or reconfigurations to a single port (A or B) while minimizing distrubtive or unneccesary register reads / writes.
 
-##### Sniff Mode
+The default mode is `interlaced-block`, providing a common flexible mode.  It allow for reading 16bit words in single calls, and also allowing for block reads of those words.  This can be used as a compromise mode between 16bit poll and bulk access.   
 
-Calling `sniffMode` will attempt to safely access the bus and registers, assuming this may not be a mcp23xxx chip, and/or the `bank` \ `sequenatil` may be set incorrectly.
+Setting the chips profile (via `setProfile`) can update the chips access mode. As the datasheet notes, the mode changes as soon as the profile (IOCON register) is writen.  While the `Mcp23` api exposed does attempt to cache the mode correclty on read and writes, impmementors should be aware of the behavior and result it may have on other code that assume or does not share the mode cache (the Transaction api which can lock / watch mode provides a path to address some of these issue).
+
+While the chips defaults to `interlaced-block` on power-on-reset (aka on power up), and is the most common operational mode, the nature of the api needs to assume correctly the current mode prior to other actions (including `setProfile` - which is used to change the mode and even `profile` may fail if bank is assumed incorrectly [or worse, not fail and update incorrect register]).  Thus, `.mode` is expossed on the `Mcp23` api which can be pre-set to the mode value prior to other actions (it makes no bus calls, it just updates this instances cache of expected mode value [assming use of the high level cached mode version of the api]).
+
+Give this complexity, this library also offers the `sniffBank` method as follows:
+
+#### Sniff Mode
+
+Calling `sniffMode` will attempt to safely access the bus and registers, assuming this may not be a Mcp23 chip, and / or the mode may not be assumed correctly.
 
 It does this by reading several addressing and probing state to attempt to guess the correct bank.
 
 ```javascript
   ...
   client.sniffMode().then(guess => {
-    console.log('smells like bank/sequential', guess);
+    console.log('smells like', guess);
   })
 ```
+
+This lead to the option of non-distructive reads of the chips configuration (`profile` / `status`) after program / or MCP restart but not chip reset.  The included example client uses this methodology to validate chip configuration upon start to avoid aditional register updates (configurable via its json).  
 
 ### Dynamic naming
 
@@ -131,6 +160,11 @@ Note that `gpios` array values must be globaly unique to the chip (aka you can n
 
 Custom maps can use a mix of types (such as "led" etc) as long as they are unique and equitable (aka `===`)
 
+### Burst Read / Write
+
+Because this chip support simplified access to repeat register writes (like `8bit-poll` mode) this library can support a buffered read and write that can be streamed to the chip via native bus support.
+
+This not only provides a efficient way to poll (read) but also potentialy provides a high enough output performance to support unique applications not able to be provided by tradition gpio, and /or other implementaitons of mcp23 libraries.
 
 ### SysFS (device tree overlay)
 
@@ -141,4 +175,7 @@ And can be accessed via libs like `onoff`.
  - requires system mod - require permissions to modify boot config / not portable across generic platform
  - does not expos some advanced features - bank access, fast poll, multiple A/B Interrupts, etc.
  
+ ### Refs
+ 
+Amongst the typical [goto](https://github.com/adafruit/Adafruit-MCP23017-Arduino-Library) source of implementations for these types of things, the [pin control](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/pinctrl/pinctrl-mcp23s08.c) in the linux kernel is descriptive.  Along with [wiringPi](https://git.drogon.net/?p=wiringPi;a=blob;f=wiringPi/mcp23017.c;h=4c3952d268751a3347a35ee3daffc3a7038d191b;hb=HEAD) version.  And a javascript alternative [johnny-five](https://github.com/rwaldron/johnny-five/blob/master/lib/expander.js)
 
