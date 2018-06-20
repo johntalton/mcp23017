@@ -7,6 +7,9 @@ class ConfigUtil {
     const name = device.name !== undefined ? device.name : fallback;
     const active = device.active !== undefined ? device.active : true;
 
+    const intA = device.interruptA;
+    const intB = device.interruptB;
+
     const resetOS = device.resetOnStart !== undefined ? device.resetOnStart : false; // done not clobber anything, safe
     const sniffMode = device.sniffMode !== undefined ? device.sniffMode : true;
     const setPoS = device.setProfileOnStart !== undefined ? device.setProfileOnStart : true;
@@ -20,6 +23,8 @@ class ConfigUtil {
       name: name,
       active: active,
       bus: { ...device.bus },
+      interruptA: intA,
+      interruptB: intB,
 
       resetOnStart: resetOS,
       sniffMode: sniffMode,
