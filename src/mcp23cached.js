@@ -33,10 +33,10 @@ class Mcp23Cached extends Mcp23Base {
     const targetMode = useProfile ? profile.mode : Converter.fromIoconMode(this.commonMode.bank, this.commonMode.sequential);
     const targetCommonMode = useProfile ? Converter.toIoconMode(profile.mode) : this.commonMode;
 
-    const matchMode = CommonMode.match(targetCommonMode, this.commonMode));
+    const matchMode = CommonMode.match(targetCommonMode, this.commonMode);
     const stableMode = !notAuto || matchMode;
 
-    if(stableMode)
+    if(stableMode) {
       console.log('Mode is stable', targetMode);
       // todo this could provide the ability to create extended
       //  write buffer during a mixxed profile data set operation.
