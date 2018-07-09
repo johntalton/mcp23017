@@ -19,9 +19,24 @@ Such as:
  - 8-bit version support (beta - missing proper iocon register setup)
  - Detailed profile configuration (slew, hardward address, etc.)
 
+### Models
+
+The Microchip MCP23 line covvers five variation across two bus types split into single and dual port chips.
+Each follows the mcp23BVV format. Where B is the bus type: "0" for I²C or "S" for SPI, and VV, the version is listed in the table bellow.
+
+| 8-bit | 16-bit | Note |
+| -- | -- | -- |
+|      | "16" | Odd registers; limited modes; IAR |
+| "08" | "17" | Common in the wild |
+| "09" | "18" | Includes INTCC feature |
+
+This pairing of 8 and 16-bit chips by feature shows the evolution of the mcp23 line over time. For example the mcp23009 and mcp23018 share the feature sets of their previous version as well as the (INTCC register) ability to contorl if a read from the GPIO or INTCAP register triggers clearing of the interrupt, as oppossed to the older mcp23008 and mcp23017 which triggered a interrupt clear on either register.
+
 ### Obligatory fritzing
 
 ![mcp23 wire fritzing](examples/basic.png)
+
+An example mcp23017 wired to pi.
 
 Note the use of the Raspberry pi's `gpio5` and `gpio6` (which default pull-up state allows the use of the `open-darin` configuration on the Mcp23 interrupt (not default configuration for chip, but what the examples/client assumes))
 
