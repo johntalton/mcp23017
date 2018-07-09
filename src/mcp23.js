@@ -1,5 +1,5 @@
 const { Mcp23Cached } = require('./mcp23cached.js');
-const { Mcp23Gpio } = require('./mcp23gpio.js');
+const { Mcp23Gpio } = require('./gpio');
 const { ConfigUtil, ConsoleUtil, Util } = require('./util');
 
 /**

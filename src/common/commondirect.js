@@ -8,6 +8,9 @@ const { REGISTERS, REGISTERS_BANK0, REGISTERS_BANK1 } = require('./registers.js'
  * A more direct access to this chip that by-passes the Mode Selection
  *  this allows for some simplicity.
  * Most notably `profile` get/set are here as well as `sniffMode`
+ *
+ * Used as the base class for Common itself to isolate the direct access
+ *   code used here from Commons more common usage pattern
  **/
 class CommonDirect {
   // cheat method that sidesteps itself directly writing reset

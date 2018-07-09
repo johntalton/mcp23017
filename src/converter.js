@@ -292,6 +292,7 @@ class Converter {
     const d = profile.slew ? SLEW_EN : SLEW_DEN;
     const h = profile.hardwareAddress ? HWA_EN : HWA_DEN;
 
+    // todo should we still support both the mode and openDrain / activeLow
     const [mo, mi] = Converter.toIoconInterrupt(profile.interrupt.mode);
     const od = profile.interrupt.openDrain ? ODR_OPENDRAIN : ODR_ACTIVEDRIVER;
     const il = profile.interrupt.activeLow ? POL_ACTIVELOW : POL_ACTIVEHIGH;

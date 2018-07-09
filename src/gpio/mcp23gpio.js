@@ -10,32 +10,17 @@
  *  class directly may be preferred at times.
  **/
 const { EventEmitter } = require('events');
-const { Mcp23Cached } = require('./mcp23cached.js');
+const { Converter } = require('../converter.js');
+const { Common } = require('../common');
+const { Mcp23GpioCached } = require('./mcp23gpiocached.js');
 const { Gpio } = require('./gpio.js');
-const { Converter } = require('./converter.js');
-const { Common } = require('./common');
 
 const EVENT_CHANGE = 'change';
 
 /**
- * Smart mode provides, if allowed, switching
- *  Modes specifically to support operations
- *  that can take advantage of them.
- * This requires cached / locked iocon/mode
- *  setup to and switching logic.
- **/
-class Mcp23SmartMode extends Mcp23Cached {
-  // get/set mode override to set all transactions dirty
-  stableMode() {
-    // capture / switch / lock mode
-    return Promise.reject(Error('stable mode'));
-  }
-}
-
-/**
  *
  **/
-class Mcp23Gpio extends Mcp23SmartMode {
+class Mcp23Gpio extends Mcp23GpioCached {
   static from(bus, options) {
     return Promise.resolve(new Mcp23Gpio(bus, options));
   }
@@ -52,7 +37,7 @@ class Mcp23Gpio extends Mcp23SmartMode {
   //  the condition that this only be called when a
   //  new interrupt has been singled by the chip.
   //  it does not get called on falling / cleared.
-  //  nor should it be called multiple time.
+  //  nor should it be called multiple time, please
   interruptA() {
     console.log('mcp23gpio Handle Interrupt A ----------------------------');
     return this.commonReadAndProcessA();
@@ -66,11 +51,20 @@ class Mcp23Gpio extends Mcp23SmartMode {
   // ----------------------------
 
   commonReadAndProcessA() {
+    // for each port, the interrupts first pin that
+    // casued the an interrupt will be the one set in the
+    // interrupt falgs register.
+    // other value changes may exist on the chip within that
+    // same port (or another port if interrupt mirroring is on)
+    // further, the different chips use slightly differnt
+    // interrupt clear register combinations
+    // at this level (disregarding mode) we do not assume
+    // any type of cached value, this includes assuming the
+    // configured state of each pin
     return Common.readIntfA(this.bus, this.commonMode)
       .then(intf => {
         // NOTE reading IntCap will cause interrupt clear
         //
-        //return Common.readGpioA(this.bus, this.commonMode)
         return Common.readIntcapA(this.bus, this.commonMode)
           .then(intcap => {
             const pins = Converter.bitFlagToPinSet(intf, this.pinmap.portA);

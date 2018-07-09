@@ -9,7 +9,7 @@ class Mcp23Cached extends Mcp23Base {
   constructor(bus, options) {
     super(bus, options);
     this.commonMode = CommonMode.MODE_MAP_DEFAULT;
-    // todo _iocon
+    // todo _iocon ?
   }
 
   get mode() { return Converter.fromIoconMode(this.commonMode.bank, this.commonMode.sequential); }

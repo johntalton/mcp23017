@@ -3,7 +3,7 @@ const { DEFAULT_NAMES } = require('../names.js');
 
 class ConfigUtil {
   static normalizeDevice(device, fallbackName) {
-    const fallback = fallbackName !== undefined ? falbackName.toString() : 'todo_random_name';
+    const fallback = fallbackName !== undefined ? fallbackName.toString() : 'todo_random_name';
     const name = device.name !== undefined ? device.name : fallback;
     const active = device.active !== undefined ? device.active : true;
 
@@ -112,13 +112,19 @@ class ConfigUtil {
 
   static normalizeInterrupt(interrupt) {
     const mirror = interrupt.mirror !== undefined ? interrupt.mirror : false;
+
+    // todo we now defer interrupt.mode until later, not sure if this is
+    //   a good interface as it does hide the open drain and active low
+    //   concepts from specific api levels.  leave here form now as a bit
+    //   of tag-along data for now
     const [odr, alow] = ConfigUtil.normalizeProfileInterruptMode(interrupt.mode);
 
     return {
       mirror: mirror,
       mode: interrupt.mode,
-      openDrain: odr,
-      activeLow: alow
+
+      _openDrain: odr,
+      _activeLow: alow
     };
   }
 

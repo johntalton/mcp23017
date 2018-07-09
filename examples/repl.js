@@ -2,6 +2,7 @@ const Repler = require('repler');
 const { Rasbus } = require('@johntalton/rasbus');
 const { Mcp23Gpio, ConsoleUtil, Util } = require('../');
 
+const BASE_10 = 10;
 
 function properParts(parts) { console.log('parts', parts);
   if(parts.length <= 0) { return [undefined]; }
@@ -29,8 +30,13 @@ Repler.addCommand({
   name: 'init',
   valid: state => state.device === undefined,
   callback: state => {
+    const parts = state.line.split(' ').slice(1);
+    if(parts.length !== 1) { return Promise.reject(Error('must pass address parameter')); }
+    const address = parseInt(parts[0], BASE_10); // todo where is .first
+    console.log('address', '0x' + address.toString(16));
+
     const type = 'i2c';
-    const config = [ 1, 0x20 ];
+    const config = [ 1, address ]; // todo assume bus 1, sorry
     return Rasbus.bytype(type).init(...config)
       .then(bus => Mcp23Gpio.from(bus))
       .then(device => state.device = device);
@@ -124,6 +130,26 @@ Repler.addCommand({
     return state.device.write(pin, whl);
   }
 });
+
+Repler.addCommand({
+  name: 'in',
+  valid: state => state.device !== undefined,
+  callback: state => {
+    const parts = state.line.split(' ').slice(1);
+    const [pin, whl] = properParts(parts);
+    console.log('pin/whl', pin, whl);
+    if(pin === undefined) { return Promise.reject(Error('undefined pin')); }
+
+    if(whl === false) {
+      // read mode
+      return state.device.read(pin).then(result => console.log('result', result));
+    }
+
+    // write
+    return state.device.write(pin, whl);
+  }
+});
+
 
 
 
