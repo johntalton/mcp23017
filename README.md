@@ -22,7 +22,12 @@ Such as:
 ### Models
 
 The Microchip MCP23 line covvers five variation across two bus types split into single and dual port chips.
-Each follows the mcp23BVV format. Where B is the bus type: "0" for I²C or "S" for SPI, and VV, the version is listed in the table bellow.
+
+Each chip is labled MCP23BVV, where:
+
+B is for bus ( "0" for I²C / "S" for SPI ).
+
+VV, the version, is listed following table:
 
 | 8-bit | 16-bit | Note |
 | -- | -- | -- |
