@@ -35,16 +35,39 @@ This pairing of 8 and 16-bit chips by feature shows the evolution of the mcp23 l
 ### Obligatory fritzing
 
 ![mcp23 wire fritzing](examples/basic.png)
+An example mcp23017 wired to pi. with pin 5 and 6 wired as open-darin INT A and B, as well as pin 13 reset. Address pin are grounded for default address.
 
-An example mcp23017 wired to pi.
+### API
 
-Note the use of the Raspberry pi's `gpio5` and `gpio6` (which default pull-up state allows the use of the `open-darin` configuration on the Mcp23 interrupt (not default configuration for chip, but what the examples/client assumes))
+While most consumers will want an application layer interface to this chip (`Mcp23Gpio` or others) the device level interface also available.
 
-Also `gpio13` is used to manage the `RESET` pin.  This allows for more descrete power managment; usefull for debuging; controlling inital boot state (using the pi's different pull-up options).  
+Architecturally the bus and byte level abstraction (via a memory map and mode specific register layouts) is handled by the `Common` classes.   As these `Common` class "speak" buffer the `Converter` class is used in the `Mcp23` (and friends) class implmenetations that are built ontop of `Common`.
 
-Lastly we drive the A0 A1 and A2 hardware address pins (as controlled by the profiles hardware address enable flag) `LOW`, resulting in the default I2C address.
+While generaly any code above `Common` is considered part of an application specific logic, the `Mcp23base` provides basic usefull data conversions, and `Mcp23cached` simplifies managing `mode`.  Both of these are provided via the exported `Mcp23` extention class.
 
-Using a more dynamic system (combinding the above two features of `RESET` managment and AX hardware addressing) a mult-chip configuration that dyanmic enabled each chip, and assignes uniqe addresses is possible (circits that provide this type of step addressing can be found "online")
+As such the `Mcp23Gpio` class that extends `Mcp23Cached` and uses `Common` directly is a perfect example of a use case specific application - and while the above can be justified as part of the core package, this may be moved out eventually.
+
+##### `Common`
+ - `state()`
+ - `exportAll()`
+ - `bulkData()`
+ - `readPort()`
+ - `writePort()`
+ - `readAB()`
+
+##### `Mcp23` extends `Mcp23Cached` extends `Mcp23base`
+ - `from()`
+ - `mode` (getter / setter for cached mode)
+ - `setProfile()`
+ - `profile()`
+ - `state()`
+ - `exportAll()`
+ - `bulkData()`
+
+##### `Mcp23Gpio`
+ - 
+##### `Gpio`
+ - 
 
 ### Example
 
