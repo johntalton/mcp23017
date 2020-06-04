@@ -1,4 +1,3 @@
-
 /**
  * Smart mode provides, if allowed, switching
  *  Modes specifically to support operations
@@ -14,3 +13,4 @@ class Mcp23SmartMode extends Mcp23Cached {
   }
 }
 
+module.exports = { Mcp23SmartMode };

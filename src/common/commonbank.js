@@ -10,7 +10,7 @@ class CommonBank {
   }
 
   static exportAll(bus, block, buffer) {
-    if(!Buffer.isBuffer(buffer)) { throw Error('export is not a buffer'); }
+    if(!Buffer.isBuffer(buffer)) { throw new Error('export is not a buffer'); }
     return BusUtil.writeblock(bus, block, buffer);
   }
 

@@ -100,7 +100,7 @@ class Converter {
 
   static calculateNewPinValue(current, pin, value, portPinmap) {
     const index = portPinmap.gpios.indexOf(pin);
-    if(index === NOT_FOUND) { console.log(portPinmap); throw Error('gpio pin not found: ' + pin); }
+    if(index === NOT_FOUND) { console.log(portPinmap); throw new Error('gpio pin not found: ' + pin); }
 
     const currentBits = BitUtil.unpackbits(PORT_PACKMAP, current);
 
@@ -121,8 +121,8 @@ class Converter {
       const ai = pinmap.portA.gpios.indexOf(gpio.pin);
       const bi = pinmap.portB.gpios.indexOf(gpio.pin);
 
-      if(ai === NOT_FOUND && bi === NOT_FOUND) { throw Error('gpio pin not found: ' + gpio.pin); }
-      if(ai !== NOT_FOUND && bi !== NOT_FOUND) { throw Error('gpio found in both port maps'); }
+      if(ai === NOT_FOUND && bi === NOT_FOUND) { throw new Error('gpio pin not found: ' + gpio.pin); }
+      if(ai !== NOT_FOUND && bi !== NOT_FOUND) { throw new Error('gpio found in both port maps'); }
 
       if(ai !== NOT_FOUND) { acc.a.push(gpio); }
       if(bi !== NOT_FOUND) { acc.b.push(gpio); }
@@ -140,12 +140,12 @@ class Converter {
   static toPortState(gpios, portPinmap) {
     return gpios.reduce((state, gpio) => {
       const pin = portPinmap.gpios.indexOf(gpio.pin);
-      //console.log('reduction to port state pin', pin, state);
+      // console.log('reduction to port state pin', pin, state);
 
-      if(pin === undefined) { throw Error('pin not found in map: ' + gpio.pin); }
-      if(!Number.isInteger(pin)) { throw Error('pin not resolved to integer: ' + gpio.pin + ' / ' + pin); }
-      if(pin === NOT_FOUND) { throw Error('pin not found in map'); }
-      if(pin < 0 || pin >= 8) { throw Error('pin range error 0 - 7' + pin); }
+      if(pin === undefined) { throw new Error('pin not found in map: ' + gpio.pin); }
+      if(!Number.isInteger(pin)) { throw new Error('pin not resolved to integer: ' + gpio.pin + ' / ' + pin); }
+      if(pin === NOT_FOUND) { throw new Error('pin not found in map'); }
+      if(pin < 0 || pin >= 8) { throw new Error('pin range error 0 - 7' + pin); }
 
       const direction = gpio.direction === Direction.DIRECTION_IN ? BIT_SET : BIT_UNSET;
       const polarity = gpio.activeLow ? BIT_SET : BIT_UNSET;
@@ -190,11 +190,11 @@ class Converter {
     // note, we use BIT_SET/UNSET as defaultValue here as this return array
     //  represents the bits needed to correctly set `gpinten`, `intcon` and `defval`
     switch(edge) {
-      case Edge.EDGE_NONE: return [BIT_UNSET, DNC, DNC]; break;
-      case Edge.EDGE_RISING: return [BIT_SET, BIT_SET, BIT_UNSET]; break; // todo
-      case Edge.EDGE_FALLING: return [BIT_SET, BIT_SET, BIT_SET]; break; // todo correct directions?
-      case Edge.EDGE_BOTH: return [BIT_SET, BIT_UNSET, DNC]; break;
-      default: throw Error('unknown edge: ' + edge); break;
+    case Edge.EDGE_NONE: return [BIT_UNSET, DNC, DNC]; break;
+    case Edge.EDGE_RISING: return [BIT_SET, BIT_SET, BIT_UNSET]; break; // todo
+    case Edge.EDGE_FALLING: return [BIT_SET, BIT_SET, BIT_SET]; break; // todo correct directions?
+    case Edge.EDGE_BOTH: return [BIT_SET, BIT_UNSET, DNC]; break;
+    default: throw new Error('unknown edge: ' + edge); break;
     }
   }
 
@@ -305,7 +305,7 @@ class Converter {
   }
 
   static toIoconInterrupt(mode) {
-    if(mode === undefined) { throw Error('undefined interrupt mode'); }
+    if(mode === undefined) { throw new Error('undefined interrupt mode'); }
 
     const POL_DNC = POL_ACTIVELOW; // todo can be made to signature
     const lookup = [
@@ -315,7 +315,7 @@ class Converter {
     ];
 
     const item = lookup.find(kvp => kvp.key === mode);
-    if(item === undefined) { throw Error('unknown iocon interrupt mode: ' + mode); }
+    if(item === undefined) { throw new Error('unknown iocon interrupt mode: ' + mode); }
 
     return item.odrPol;
   }
@@ -332,7 +332,7 @@ class Converter {
     const activelow = i === POL_ACTIVELOW;
 
     // sanity check, according to doc, always zero
-    if(u !== 0) { throw Error('iocon unpack error / zero bit'); }
+    if(u !== 0) { throw new Error('iocon unpack error / zero bit'); }
 
     // console.log('fromIocon', iocon.toString(2), b, m, s, d, h, o, i);
 
@@ -356,7 +356,7 @@ class Converter {
     if(bank === Bank.BANK0 && !sequential) { return ProfileMode.MODE_16BIT_POLL; }
     if(bank === Bank.BANK1 && sequential) { return ProfileMode.MODE_DUAL_BLOCKS; }
     if(bank === Bank.BANK1 && !sequential) { return ProfileMode.MODE_8BIT_POLL; }
-    throw Error('unknown mode / sequential: ' + bank + ' / ' + sequential);
+    throw new Error('unknown mode / sequential: ' + bank + ' / ' + sequential);
   }
 
   static toIoconMode(mode) {
@@ -364,7 +364,7 @@ class Converter {
     if(mode === ProfileMode.MODE_DUAL_BLOCKS) { return CommonMode.MODE_MAP_DUAL_BLOCKS; }
     if(mode === ProfileMode.MODE_16BIT_POLL) { return CommonMode.MODE_MAP_16BIT_POLL; }
     if(mode === ProfileMode.MODE_8BIT_POLL) { return CommonMode.MODE_MAP_8BIT_POLL; }
-    throw Error('unknown mode: ' + mode);
+    throw new Error('unknown mode: ' + mode);
   }
 
   static fromIoconInterrupt(odEn, activeLow) {

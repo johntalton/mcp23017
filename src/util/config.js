@@ -1,4 +1,3 @@
-const aod = require('@johntalton/and-other-delights');
 const { DEFAULT_NAMES } = require('../names.js');
 
 class ConfigUtil {
@@ -50,8 +49,8 @@ class ConfigUtil {
       const active = exp.active !== undefined ? exp.active : true;
       const { pin, port } = exp;
 
-      if(type === 'gpio' && pin === undefined) { throw Error('gpio must specify pin'); }
-      if(type === 'port' && port === undefined) { throw Error('port must specify ... uh, port'); }
+      if(type === 'gpio' && pin === undefined) { throw new Error('gpio must specify pin'); }
+      if(type === 'port' && port === undefined) { throw new Error('port must specify ... uh, port'); }
 
       const dir = exp.direction !== undefined ? exp.direction : 'out'; // todo default_direction
       const edge = exp.edge !== undefined ? exp.edge : 'none'; // todo default_edge
@@ -143,7 +142,7 @@ class ConfigUtil {
     ];
 
     const item = intModeOdrAlowMap.find(kvp => kvp.key === mode);
-    if(item === undefined) { throw Error('unknown mode: ' + mode); }
+    if(item === undefined) { throw new Error('unknown mode: ' + mode); }
     return item.odrAlow;
   }
 }

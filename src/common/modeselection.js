@@ -1,4 +1,3 @@
-
 const { ClassSelector } = require('@johntalton/and-other-delights');
 const { CommonMode } = require('../defines.js');
 

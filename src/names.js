@@ -1,3 +1,6 @@
+/**
+ * Simple set of Name configurations that most people would expect.
+ */
 
 // Pins individual names in A0.7 B0.7 (common for multi single gpio usage)
 const GPIO16_NAMES = {

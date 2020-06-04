@@ -1,3 +1,5 @@
+/* eslint-disable max-classes-per-file */
+
 class Bank {}
 Bank.BANK0 = 0; // ABAB
 Bank.BANK1 = 1; // AA BB

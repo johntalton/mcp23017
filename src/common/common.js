@@ -1,3 +1,5 @@
+/* eslint-disable max-classes-per-file */
+
 const { Bank, CommonMode } = require('../defines.js');
 const { REGISTERS } = require('./registers.js');
 const { ModeSelection } = require('./modeselection.js');
@@ -27,7 +29,7 @@ class Common extends CommonDirect {
   static statusMemmapToNamedBytes(buf, mode) {
     const iocon = buf.readUInt8(REGISTERS[mode.bank].IOCON);
     const ioconAlt = buf.readUInt8(REGISTERS[mode.bank].IOCON_ALT);
-    if(iocon !== ioconAlt) { throw Error('iocon miss-match: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
+    if(iocon !== ioconAlt) { throw new Error('iocon miss-match: ' + iocon.toString(16) + ' != ' + ioconAlt.toString(16)); }
     // todo also could validate low bit and mode from iocon
 
     const a = {
@@ -75,7 +77,7 @@ class Common extends CommonDirect {
   // set the entire gpio in one go using proper mode
   static exportAll(bus, mode, exports) {
     console.log('common exportAll', exports);
-    if(exports.profile !== undefined) { throw Error('setting profile during exportAll not recommended'); }
+    if(exports.profile !== undefined) { throw new Error('setting profile during exportAll not recommended'); }
 
     // todo this creates our memory map, however we need to
     // explicitly call out its size and calculate  in some const some place

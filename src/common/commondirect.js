@@ -7,16 +7,17 @@ const { REGISTERS, REGISTERS_BANK0, REGISTERS_BANK1 } = require('./registers.js'
 /**
  * A more direct access to this chip that by-passes the Mode Selection
  *  this allows for some simplicity.
- * Most notably `profile` get/set are here as well as `sniffMode`
+ *
+ * Most notably `profile` get/set are here as well as `sniffMode`.
  *
  * Used as the base class for Common itself to isolate the direct access
- *   code used here from Commons more common usage pattern
+ *   code used here from Commons more common usage pattern.
  **/
 class CommonDirect {
   // cheat method that sidesteps itself directly writing reset
   static softwareReset(bus) {
     console.log(' ** attempting software reset (zero bytes) ** ');
-    return Promise.all((new Array(30).fill(0))
+    return Promise.all(new Array(30).fill(0)
       .map((_, index) => bus.write(index, Buffer.from([0])).catch(e => { console.log('reset err', index, e); })))
       .then(() => {
         const iocon = 0x08;
@@ -28,12 +29,15 @@ class CommonDirect {
   // cheat method that sidesteps itself by bit manipulation
   static sniffMode(bus, hint) {
     function lowZero(iocon) { return (iocon & 0x01) === 0; }
+
     function highZero(iocon) { return ((iocon >> 7) & 1) === 0; }
+
     function allIocon(iocons) {
-      const first = iocons[0];
+      const [first] = iocons;
       if(!lowZero(first)) { return false; }
       return iocons.every(iocon => first === iocon, true);
     }
+
     // creates a common mode from iocon register
     function guessIocon(i) {
       const bank = (i >> 7) === 1 ? Bank.BANK1 : Bank.BANK0;
@@ -157,8 +161,7 @@ class CommonDirect {
           const guess = guessIocon(h);
           console.log('struck gold (fools) BANK 0, h is iocon 0x' + h.toString(16), guess);
           return guess;
-        }
-        else if(m16p === -Infinity && mib === -Infinity) {
+        } else if(m16p === -Infinity && mib === -Infinity) {
           // bank 1
           const guess = guessIocon(l);
           console.log('struck gold (fools) BANK 1, l is iocon 0x' + l.toString(16), guess);
@@ -186,7 +189,7 @@ class CommonDirect {
           [m8p, CommonMode.MODE_MAP_8BIT_POLL]]
           .reduce((max, item) => (item[0] > max[0] ? item : max), [-Infinity, undefined])[1];
 
-        if(guess === undefined) { throw Error('undefined guess'); }
+        if(guess === undefined) { throw new Error('undefined guess'); }
         console.log('sniff', guess);
         return guess;
       })

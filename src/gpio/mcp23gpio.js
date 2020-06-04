@@ -1,8 +1,8 @@
 /**
- * Gpio Application Interface
+ * Gpio Application Interface.
  *
  * This defines - on top of - a gpio like interface to interact
- *  with the basic chip
+ *  with the basic chip.
  *
  * While this class will be the go-to for most -
  *  it adds a significant amount of assumed logic that is not
@@ -52,11 +52,11 @@ class Mcp23Gpio extends Mcp23GpioCached {
 
   commonReadAndProcessA() {
     // for each port, the interrupts first pin that
-    // casued the an interrupt will be the one set in the
-    // interrupt falgs register.
+    // caused the an interrupt will be the one set in the
+    // interrupt flags register.
     // other value changes may exist on the chip within that
     // same port (or another port if interrupt mirroring is on)
-    // further, the different chips use slightly differnt
+    // further, the different chips use slightly different
     // interrupt clear register combinations
     // at this level (disregarding mode) we do not assume
     // any type of cached value, this includes assuming the
@@ -100,7 +100,7 @@ class Mcp23Gpio extends Mcp23GpioCached {
     return Promise.resolve(new Gpio(gpio.pin, this));
   }
 
-  watch(pin, cb) { // eslint-disable promise/prefer-await-to-callback
+  watch(pin, cb) { // eslint-disable-line promise/prefer-await-to-callbacks
     console.log('watching pin', pin);
     function filtered(filterPin, fcb) {
       return (err, incommingPin, value) => {
@@ -128,12 +128,12 @@ class Mcp23Gpio extends Mcp23GpioCached {
 
     // force a direct read
       .then(() => Common.readGpioA(this.bus, this.commonMode))
-    //return Common.readGpioA(this.bus, this.commonMode)
+    // return Common.readGpioA(this.bus, this.commonMode)
       .then(gpioa => {
         const values = Converter.bitFlagToPinSet(gpioa, this.pinmap.portA);
         console.log('values for all portA gpio', gpioa, values);
         const result = values.find(value => value.pin === pin);
-        if(result === undefined) { throw Error('unknown pin name: ' + pin); }
+        if(result === undefined) { throw new Error('unknown pin name: ' + pin); }
         console.log('mcp23gpio read result', result);
         return Converter.toHighLow(result.set);
       });
@@ -142,12 +142,12 @@ class Mcp23Gpio extends Mcp23GpioCached {
   write(pin, value) {
     console.log('mcp23gpio write', pin, value);
     // is this a port A or B write
-    // 
+    //
     // writing a single pin (digital write ins some parlance)
     //  we must write the entire registers worth of data
     //  as such we must know/assume existing values if we
     //  do not wish to have side effects of single pin action
-    // 
+    //
     return Common.readGpioA(this.bus, this.commonMode)
       .then(currentGpio => Converter.calculateNewPinValue(currentGpio, pin, value, this.pinmap.portA))
       .then(newGpio => Common.writeGpioA(this.bus, this.commonMode, newGpio));

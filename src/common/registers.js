@@ -1,4 +1,3 @@
-
 // data sheet defined register layout for bank0 and bank1
 
 // the total size of all register related to a A or B ports

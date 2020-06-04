@@ -1,4 +1,6 @@
-
+/**
+ * Utility Class to aid in data validation.
+ */
 class Util {
   static isDefaultGpio(gpio) { // todo these function have knowledge (move out)
     if(gpio.direction !== 'in') { return false; }

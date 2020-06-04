@@ -22,13 +22,13 @@ class Mcp23Cached extends Mcp23Base {
   // wrap setProfile to use cached mode
   setProfile(profile) {
     // this is where profile.mode vs this.mode is resolved
-    // we also handle thie mode false case in the profile as
+    // we also handle this.mode false case in the profile as
     // explicit use this.mode
     // the result is a target mode-pair (mode and common mode)
     // that is used to set, and then cache the commonMode for
     // subsequent calls
     const notAuto = profile.mode !== false;
-    const useProfile = (notAuto && profile.mode !== undefined);
+    const useProfile = notAuto && profile.mode !== undefined;
 
     const targetMode = useProfile ? profile.mode : Converter.fromIoconMode(this.commonMode.bank, this.commonMode.sequential);
     const targetCommonMode = useProfile ? Converter.toIoconMode(profile.mode) : this.commonMode;
@@ -39,21 +39,20 @@ class Mcp23Cached extends Mcp23Base {
     if(stableMode) {
       console.log('Mode is stable', targetMode);
       // todo this could provide the ability to create extended
-      //  write buffer during a mixxed profile data set operation.
-      //  that is, becase the mode is stable we can assume
+      //  write buffer during a mixed profile data set operation.
+      //  that is, because the mode is stable we can assume
       //  normal mode write optimization can be done
 
       // todo this can be optimized bellow to not include the
-      //   re-cacheing of the commonMode, nor the profile
+      //   re-caching of the commonMode, nor the profile
       //   decomposition and injection of targetMode.
-    }
-    else {
+    } else {
       console.log(' -- FLASH FLASH FLASH (mode change)  --', targetMode);
       // todo similarly to the above stable mode, we have some
-      //   posibility to add further operation now that we can assume
+      //   ability to add further operation now that we can assume
       //   the mode to some degree.
-      //   this is, more risky behavior and is advised agasint
-      //   in the datasheet
+      //   this is, more risky behavior and is advised against
+      //   in the data-sheet
 
       // todo the profile.mutable concept needs to be managed or
       //   extended into this context, if we are not allowed to
