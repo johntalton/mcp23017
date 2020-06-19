@@ -1,10 +1,11 @@
 {
   "name": "@johntalton/mcp23",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "",
   "main": "src/mcp23.js",
   "scripts": {
-    "lint": "./node_modules/.bin/eslint ."
+    "lint": "./node_modules/.bin/eslint .",
+    "coverage": ""
   },
   "author": "johntalton@gmail.com",
   "license": "MIT",

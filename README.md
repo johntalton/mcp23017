@@ -55,7 +55,7 @@ While most consumers will want an application layer interface to this chip (`Mcp
 
 Architecturally the bus and byte level abstraction (via a memory map and mode specific register layouts) is handled by the `Common` classes.   As these `Common` class "speak" buffer the `Converter` class is used in the `Mcp23` (and friends) class implementation that are built on-top of `Common`.
 
-While generaly any code above `Common` is considered part of an application specific logic, the `Mcp23base` provides basic usefull data conversions, and `Mcp23cached` simplifies managing `mode`.  Both of these are provided via the exported `Mcp23` extention class.
+While generally any code above `Common` is considered part of an application specific logic, the `Mcp23base` provides basic useful data conversions, and `Mcp23cached` simplifies managing `mode`.  Both of these are provided via the exported `Mcp23` extention class.
 
 As such the `Mcp23Gpio` class that extends `Mcp23Cached` and uses `Common` directly is a perfect example of a use case specific application - and while the above can be justified as part of the core package, this may be moved out eventually.
 
