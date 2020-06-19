@@ -1,6 +1,10 @@
+/* eslint-disable promise/no-nesting */
 
-// 1st party imports
-const { Rasbus } = require('@johntalton/rasbus');
+// eslint-disable-next-line import/no-dynamic-require
+function tryRequire(name) { try { return require(name); } catch (_) { console.log(name, 'unavailable'); return undefined; } } // eslint-disable-line global-require
+// const i2c = tryRequire('i2c-bus');
+
+const { I2CMockBus, I2CAddressedBus } = require('@johntalton/and-other-delights');
 
 // local imports
 const { Mcp23, Util, ConsoleUtil } = require('../');
@@ -18,13 +22,23 @@ class Device {
   }
 
   static _setup(config) {
-    return Rasbus.bytype(config.bus.driver).init(...config.bus.id)
-      .then(bus => Mcp23.from(bus, { names: config.names }));
+    const [busNumber, busAddress] = config.bus.id;
+
+    if(config.mock) {
+      //
+      const deviceDefinition_mcp23017 = { commandMask: 0xFF, register: { 1: {} }, registers: { 'BANK0': { 1: {} } } };
+      // todo this method is called only once, move code to main
+      I2CMockBus.addDevice(busNumber, busAddress, deviceDefinition_mcp23017);
+    }
+
+    const provider = config.mock ? I2CMockBus : i2c;
+    return provider.openPromisified(busNumber)
+      .then(bus => Mcp23.from(new I2CAddressedBus(bus, busAddress), { names: config.names }));
   }
 
   static _configure(config) {
     return Promise.resolve()
-      .then(() => config.resetOnStart ? config.client.softwareReset() : Promise.resolve())
+      .then(() => (config.resetOnStart ? config.client.softwareReset() : Promise.resolve()))
       .then(() => Device.configSniff(config))
       .then(guess => Device.configUpdateMode(config, guess))
       .then(() => config.client.profile())
@@ -34,9 +48,9 @@ class Device {
 
         const [match, why] = Device.configValidateProfile(config, config.profile, profile);
 
-        if(!match && config.setProfileOnStart) { console.log('about to overrite profile -', why); }
-        if(!match && !config.setProfileOnStart) { console.log('profile missmatch, no update (risky) -', why); }
-        if(match && config.setProfileOnStart) { console.log('matching profile, redundent profile set'); }
+        if(!match && config.setProfileOnStart) { console.log('about to over write profile -', why); }
+        if(!match && !config.setProfileOnStart) { console.log('profile mismatch, no update (risky) -', why); }
+        if(match && config.setProfileOnStart) { console.log('matching profile, redundant profile set'); }
 
         //
         const force = true;
@@ -46,27 +60,29 @@ class Device {
           return config.client.setProfile(config.profile)
             .then(() => {
               if(!pedanticValidation) {
-                console.log('profile after set (no re-read, profile is config)')
+                console.log('profile after set (no re-read, profile is config)');
                 ConsoleUtil.logProfile(config.profile);
-                return Promise.resolve();
+                return;
               }
 
-              return config.client.profile().then(profile => {
-                const [match, why] = Util.compairProfiles(config.profile, profile);
-                if(!match) { throw Error('pedantic validation missmatch: ' + why); }
+              return config.client.profile().then(identity => {
+                const [identifyMatch, identityWhy] = Util.compairProfiles(config.profile, identity);
+                if(!identifyMatch) { throw new Error('pedantic validation mismatch: ' + identityWhy); }
                 console.log('passed pedantic validation');
-                ConsoleUtil.logProfile(profile);
+                ConsoleUtil.logProfile(identity);
+                return;
               });
+
             });
         }
 
         console.log('skipping profile set on startup');
-        return Promise.resolve();
+        return;
       })
       .then(() => config.client.state())
       .then(state => {
         ConsoleUtil.logState(state);
-        const effectiveExports = Device.configValidateExports(config, state)
+        const effectiveExports = Device.configValidateExports(config, state);
         return Device.configExports(config, effectiveExports);
       });
   }
@@ -112,31 +128,27 @@ class Device {
 
     if(guess === curCM) {
       if(curPM === false) {
-        console.log('guess matches client, profile is moder agnostic');
+        console.log('guess matches client, profile is mode agnostic');
         return;
       }
 
-     if(curPM === guess) {
+      if(curPM === guess) {
         console.log('guess matches client and profile');
         return;
       }
-      else {
-        console.log('guess matches client, profile will overrite if set');
-        return;
-      }
+
+      console.log('guess matches client, profile will over write if set');
     }
 
     if(curPM === false) {
       console.log('updating client from guess, profile is mode agnostic');
-    }
-    else {
-      console.log('updating clinet from guess, profile will override if set')
+    } else {
+      console.log('updating client from guess, profile will override if set');
     }
 
     // update working mode
     console.log(' update client cache', guess);
     config.client.mode = guess;
-    return;
   }
 
   static configValidateProfile(config, userProfile, activeProfile) {
@@ -156,7 +168,7 @@ class Device {
 
     const effective = [];
 
-    // our names should match as we inited via our names map.
+    // our names should match as we init via our names map.
     // thus we need to walk each and validate configuration
     // state includes all names, use it to iterate
     state.gpios.forEach(gpio => {
@@ -169,33 +181,28 @@ class Device {
             // add to effectiveExports
             console.log('chip has configured gpio that is not defined by exports (adopting on update)');
             effective.push(gpio);
-          }
-          else {
-            console.log('chip has configured gpio that is not defined by exports (no adopt, reseting on update)');
+          } else {
+            console.log('chip has configured gpio that is not defined by exports (no adopt, reset on update)');
             console.log('old', gpio);
           }
         }
-      }
-      else {
+      } else {
         // we have a defined export, if not configured, validate it matches
         if(Util.isDefaultGpio(gpio)) {
-          console.log('chip has unconfigured gpio, exports defined new (semi-safe to add on update)');
+          console.log('chip has un-configured gpio, exports defined new (semi-safe to add on update)');
           effective.push(exp);
-        }
-        else {
+        } else {
           const [match, why] = Util.matchGpios(gpio, exp);
           if(match) {
             console.log('happy day, gpio and export match');
             effective.push(exp);
-          }
-          else {
+          } else {
             if(true) {
-              console.log(' !! gpio / export missmatch - pick export', exp.pin, why);
-              effective.push(exp)
-            }
-            else {
-              console.log('gpio / export missmatch - pick gpio', gpio.pin, why);
-              effective.push(gpio)
+              console.log(' !! gpio / export mismatch - pick export', exp.pin, why);
+              effective.push(exp);
+            } else {
+              console.log('gpio / export mismatch - pick gpio', gpio.pin, why);
+              effective.push(gpio);
             }
           }
         }
@@ -208,11 +215,11 @@ class Device {
 
   static configExports(config, exports) {
     if(config.setExportsOnStart === false) {
-      console.log('skiping export of gpio');
+      console.log('skipping export of gpio');
       return Promise.resolve();
     }
 
-    console.log('# configuring exports (this may be distruptive to attached io)');
+    console.log('# configuring exports (this may be disruptive to attached io)');
     return config.client.exportAll(exports);
   }
 }

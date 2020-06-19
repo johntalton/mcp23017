@@ -203,7 +203,7 @@ class CommonDirect {
   static profile(bus, mode) {
     console.log('profile', mode);
     // we skip the modeSelection here for simplicity
-    return bus.read(REGISTERS[mode.bank].IOCON)
+    return bus.read(REGISTERS[mode.bank].IOCON, 1)
       .then(buf => buf.readUInt8(0));
   }
 

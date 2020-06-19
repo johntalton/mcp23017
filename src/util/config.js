@@ -5,6 +5,7 @@ class ConfigUtil {
     const fallback = fallbackName !== undefined ? fallbackName.toString() : 'todo_random_name';
     const name = device.name !== undefined ? device.name : fallback;
     const active = device.active !== undefined ? device.active : true;
+    const mock = device.mock !== undefined ? device.mock : false;
 
     const intA = device.interruptA;
     const intB = device.interruptB;
@@ -21,6 +22,7 @@ class ConfigUtil {
     return {
       name: name,
       active: active,
+      mock: mock,
       bus: { ...device.bus },
       interruptA: intA,
       interruptB: intB,

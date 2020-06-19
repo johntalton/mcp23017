@@ -1,5 +1,3 @@
-
-
 const { Config } = require('./client-config.js');
 const { Device } = require('./client-device.js');
 

@@ -1,19 +1,14 @@
-
-const fs = require('fs');
+const fs = require('fs').promises;
 
 // local imports
-const { Mcp23, ConfigUtil } = require('../');
+const { ConfigUtil } = require('../');
 
 class Config {
   static config(path) {
-    return new Promise((resolve, reject) => {
-      fs.readFile(path, { encoding: 'utf-8', flag: 'r' }, (err, data) => {
-        if(err) { reject(err); return; }
-        resolve(data);
-      });
-    })
-    .then(JSON.parse)
-    .then(Config.normalize);
+    return fs.readFile(path, { encoding: 'utf-8', flag: 'r' })
+      .then(JSON.parse)
+      .then(Config.normalize)
+      .then(config => Object.freeze(config));
   }
 
   static normalize(json) {
@@ -27,7 +22,7 @@ class Config {
   static normalizeMqtt(mqtt) {
     return {
       ...mqtt,
-      url: mqtt.url !== undefined ? mqtt.url : process.env.mqtturl
+      url: mqtt.url !== undefined ? mqtt.url : process.env.mqtturl // eslint-disable-line no-process-env
     };
   }
 }

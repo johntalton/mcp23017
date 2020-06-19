@@ -3,6 +3,7 @@
   "devices": [
     {
       "name": "mcp23-extention",
+      "mock": true,
       "bus": { "driver": "i2c", "id": [ 1, 32 ] },
       "active": true,
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-bitwise */
 
-const { BitUtil } = require('@johntalton/and-other-delights');
+const { BitUtil, TRUE_8_PACKMAP, REVERSE_TRUE_8_PACKMAP } = require('@johntalton/and-other-delights');
 const {
   Bank,
   DigitalIO,
@@ -25,8 +25,8 @@ const BIT_UNSET = 0;
 function NOT_BIT(bit) { return bit === BIT_SET ? BIT_UNSET : BIT_SET; }
 
 //
-const PORT_PACKMAP = BitUtil.REVERSE_TRUE_8_PACKMAP;
-const IOCON_PACKMAP = BitUtil.TRUE_8_PACKMAP;
+const PORT_PACKMAP = REVERSE_TRUE_8_PACKMAP;
+const IOCON_PACKMAP = TRUE_8_PACKMAP;
 
 //
 const MIR_EN = BIT_SET;
