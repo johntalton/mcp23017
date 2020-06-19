@@ -324,7 +324,7 @@ class Converter {
   }
 
   static fromIocon(iocon) {
-    const [b, m, s, d, h, o, i, u] = BitUtil.unpackbits(IOCON_PACKMAP, iocon);
+    const [b, m, s, d, h, o, i, u] = BitUtil.unpackBits(IOCON_PACKMAP, iocon);
 
     const bank = b === 0 ? Bank.BANK0 : Bank.BANK1;
     const mirror = m === MIR_EN;
