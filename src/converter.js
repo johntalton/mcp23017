@@ -1,3 +1,4 @@
+/* eslint-disable import/unambiguous */
 /* eslint-disable no-bitwise */
 
 const { BitUtil, TRUE_8_PACKMAP, REVERSE_TRUE_8_PACKMAP } = require('@johntalton/and-other-delights');
@@ -52,15 +53,17 @@ const DEFAULT_POL = POL_ACTIVELOW;
 
 const UNUSED_IOCON_BIT = BIT_UNSET; // they say the last bit is unset
 
-const DEFAULT_IOCON = BitUtil.packbits(
+const DEFAULT_IOCON = BitUtil.packBits(
   IOCON_PACKMAP,
-  DEFAULT_MIR,
-  DEFAULT_SEQ,
-  DEFAULT_SLEW,
-  DEFAULT_HWA,
-  DEFAULT_ODR,
-  DEFAULT_POL,
-  UNUSED_IOCON_BIT
+  [
+    DEFAULT_MIR,
+    DEFAULT_SEQ,
+    DEFAULT_SLEW,
+    DEFAULT_HWA,
+    DEFAULT_ODR,
+    DEFAULT_POL,
+    UNUSED_IOCON_BIT
+  ]
 );
 
 const OLAT_LOGIC_HIGH = DigitalIO.HIGH; // map to h/l as we export those for comparison
@@ -80,7 +83,7 @@ class Converter {
     const tail = new Array(8 - offset - 1).fill(fill);
     const prams = new Array(offset).fill(fill).concat([value], tail);
     // console.log('prams', offset, prams);
-    return BitUtil.packbits(PORT_PACKMAP, ...prams);
+    return BitUtil.packBits(PORT_PACKMAP, prams);
   }
 
   static makeSetBit(offset, value) {
@@ -92,7 +95,7 @@ class Converter {
   }
 
   static bitFlagToPinSet(value, portPinmap) {
-    const bits = BitUtil.unpackbits(PORT_PACKMAP, value);
+    const bits = BitUtil.unpackBits(PORT_PACKMAP, value);
     // now zip the arrays and test set as bit high.
     return portPinmap.gpios.map((name, i) => ({ pin: name, set: bits[i] === BIT_SET }));
   }
@@ -102,13 +105,13 @@ class Converter {
     const index = portPinmap.gpios.indexOf(pin);
     if(index === NOT_FOUND) { console.log(portPinmap); throw new Error('gpio pin not found: ' + pin); }
 
-    const currentBits = BitUtil.unpackbits(PORT_PACKMAP, current);
+    const currentBits = BitUtil.unpackBits(PORT_PACKMAP, current);
 
     if(currentBits[index] === value) { console.log('REDUNDANT BIT SET'); }
 
     currentBits[index] = value;
 
-    const pb = BitUtil.packbits(PORT_PACKMAP, ...currentBits);
+    const pb = BitUtil.pacBbits(PORT_PACKMAP, currentBits);
     console.log('converter calculate pin value', current, pin, value, index, currentBits, pb.toString(16));
     return pb;
   }
@@ -202,17 +205,17 @@ class Converter {
     // todo data is in register format, group all values by pin
 
     const dataA = {
-      intflags: BitUtil.unpackbits(PORT_PACKMAP, data.intfA),
-      intcaps: BitUtil.unpackbits(PORT_PACKMAP, data.intcapA),
-      gpios: BitUtil.unpackbits(PORT_PACKMAP, data.gpioA),
-      olats: BitUtil.unpackbits(PORT_PACKMAP, data.olatA)
+      intflags: BitUtil.unpackBits(PORT_PACKMAP, data.intfA),
+      intcaps: BitUtil.unpackBits(PORT_PACKMAP, data.intcapA),
+      gpios: BitUtil.unpackBits(PORT_PACKMAP, data.gpioA),
+      olats: BitUtil.unpackBits(PORT_PACKMAP, data.olatA)
     };
 
     const dataB = {
-      intflags: BitUtil.unpackbits(PORT_PACKMAP, data.intfB),
-      intcaps: BitUtil.unpackbits(PORT_PACKMAP, data.intcapB),
-      gpios: BitUtil.unpackbits(PORT_PACKMAP, data.gpioB),
-      olats: BitUtil.unpackbits(PORT_PACKMAP, data.olatB)
+      intflags: BitUtil.unpackBits(PORT_PACKMAP, data.intfB),
+      intcaps: BitUtil.unpackBits(PORT_PACKMAP, data.intcapB),
+      gpios: BitUtil.unpackBits(PORT_PACKMAP, data.gpioB),
+      olats: BitUtil.unpackBits(PORT_PACKMAP, data.olatB)
     };
 
     return [].concat(
@@ -239,14 +242,14 @@ class Converter {
 
   static fromPortState(state, portPinmap) {
     // console.log('from port state', state);
-    const directions = BitUtil.unpackbits(PORT_PACKMAP, state.iodir);
-    const polarities = BitUtil.unpackbits(PORT_PACKMAP, state.iopol);
-    const intEnableds = BitUtil.unpackbits(PORT_PACKMAP, state.gpinten);
-    const defaultValues = BitUtil.unpackbits(PORT_PACKMAP, state.defval);
-    const intControls = BitUtil.unpackbits(PORT_PACKMAP, state.intcon);
-    const pullUps = BitUtil.unpackbits(PORT_PACKMAP, state.gppu);
-    const intFlags = BitUtil.unpackbits(PORT_PACKMAP, state.intf);
-    const olats = BitUtil.unpackbits(PORT_PACKMAP, state.olat);
+    const directions = BitUtil.unpackBits(PORT_PACKMAP, state.iodir);
+    const polarities = BitUtil.unpackBits(PORT_PACKMAP, state.iopol);
+    const intEnableds = BitUtil.unpackBits(PORT_PACKMAP, state.gpinten);
+    const defaultValues = BitUtil.unpackBits(PORT_PACKMAP, state.defval);
+    const intControls = BitUtil.unpackBits(PORT_PACKMAP, state.intcon);
+    const pullUps = BitUtil.unpackBits(PORT_PACKMAP, state.gppu);
+    const intFlags = BitUtil.unpackBits(PORT_PACKMAP, state.intf);
+    const olats = BitUtil.unpackBits(PORT_PACKMAP, state.olat);
 
     // our port pin map is setup to return gpio pin info in ascending
     // order.  thus we can use array 0 as pin 0 etc.
@@ -301,7 +304,7 @@ class Converter {
 
     // console.log('toIocon', b, m, s, d, h, o, i, 0, obj);
 
-    return BitUtil.packbits(IOCON_PACKMAP, b, m, s, d, h, o, i, UNUSED_IOCON_BIT);
+    return BitUtil.packBits(IOCON_PACKMAP, [ b, m, s, d, h, o, i, UNUSED_IOCON_BIT ]);
   }
 
   static toIoconInterrupt(mode) {

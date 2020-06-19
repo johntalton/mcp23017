@@ -54,7 +54,7 @@ class CommonDirect {
       [REGISTERS_BANK0.IODIRA, 4]
     ];
 
-    return BusUtil.readblock(bus, block)
+    return BusUtil.readBlock(bus, block)
       .then(sniffed => {
         console.log('sniffed raw', sniffed);
 
