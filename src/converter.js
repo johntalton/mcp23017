@@ -1,7 +1,11 @@
 /* eslint-disable import/unambiguous */
 /* eslint-disable no-bitwise */
 
-const { BitUtil, TRUE_8_PACKMAP, REVERSE_TRUE_8_PACKMAP } = require('@johntalton/and-other-delights');
+const {
+  BitUtil,
+  TRUE_8_PACKMAP, REVERSE_TRUE_8_PACKMAP
+} = require('@johntalton/and-other-delights');
+
 const {
   Bank,
   DigitalIO,

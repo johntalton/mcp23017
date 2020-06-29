@@ -14,7 +14,8 @@ class Mcp23Base {
   }
 
   close() {
-    // todo
+    // Detatch from bus. No close needed.
+    return Promise.resolve();
   }
 
   softwareReset() { return Common.softwareReset(this.bus); }
