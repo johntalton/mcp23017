@@ -10,7 +10,7 @@
   "author": "johntalton@gmail.com",
   "license": "MIT",
   "dependencies": {
-    "@johntalton/and-other-delights": "^2.0.0"
+    "@johntalton/and-other-delights": "^3.0.2"
   },
   "devDependencies": {
     "eslint": "^7.1.0",
