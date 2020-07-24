@@ -8,6 +8,7 @@ Microchip's 8bit and 16bit wide gpio expander provides the ability to offload gp
 ![GitHub](https://img.shields.io/github/license/johntalton/mcp23)
 [![Downloads Per Month](http://img.shields.io/npm/dm/@johntalton/mcp23.svg)](https://www.npmjs.com/package/@johntalton/mcp23)
 ![GitHub last commit](https://img.shields.io/github/last-commit/johntalton/mcp23)
+[![Package Quality](https://npm.packagequality.com/shield/%40johntalton%2Fmcp23.svg)](https://packagequality.com/#?package=@johntalton/mcp23)
 
 This implmentation sports several feature not found elsewere (js or otherwise). Providing direct access to the full
 feautre set of the chip.
