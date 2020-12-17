@@ -1,7 +1,5 @@
 name: CI
-on:
-  push:
-    branches: [ master ]
+on: push
 
 jobs:
   build:
@@ -9,8 +7,21 @@ jobs:
     steps:
       - uses: actions/checkout@v2.3.1
       - uses: actions/setup-node@v2.1.4
+      - run: npm install
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.1
+      - uses: actions/setup-node@v2.1.4
+      - run: npm install
+      - run: npm run lint --if-present
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.1
+      - uses: actions/setup-node@v2.1.4
         with:
           node-version: 14.x
       - run: npm install
-      - run: npm run lint
-      - run: npm run coverage
+      - run: npm run test --if-present
+      - run: npm run coverage --if-present
